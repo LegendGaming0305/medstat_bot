@@ -14,27 +14,27 @@ async def process_subject_input(message: types.Message, state: FSMContext) -> No
     '''
     await state.update_data(subject=message.text)
     await message.answer('Введите Ваше ФИО строго через пробел')
-    await state.set_state(User_states.fio)
+    await state.set_state(User_states.reg_fio)
 
-@router.message(User_states.fio)
+@router.message(User_states.reg_fio)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение ФИО
     '''
     await state.update_data(fio=message.text)
     await message.answer('Введите Вашу должность')
-    await state.set_state(User_states.post)
+    await state.set_state(User_states.reg_post)
 
-@router.message(User_states.post)
+@router.message(User_states.reg_post)
 async def process_post_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение наименования должности
     '''
     await state.update_data(post=message.text)
     await message.answer('Укажите Ваш номер телефона в формате +7 (999) 999-99-99')
-    await state.set_state(User_states.telephone_number)
+    await state.set_state(User_states.reg_telephone_number)
 
-@router.message(User_states.telephone_number)
+@router.message(User_states.reg_telephone_number)
 async def process_telephone_number_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение номера телефона

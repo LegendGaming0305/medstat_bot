@@ -41,6 +41,7 @@ class Database():
                             END $$;''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS registration_process(
                                     id SERIAL PRIMARY KEY,
+                                    user_id BIGINT CHECK (user_id > 0) NOT NULL, 
                                     subject_name VARCHAR(100),
                                     user_fio VARCHAR(50),
                                     post_name VARCHAR(100),
@@ -48,12 +49,12 @@ class Database():
                                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS high_priority_users(
                                     id SERIAL PRIMARY KEY,
-                                    user_id INTEGER CHECK (user_id > 0) NOT NULL,
+                                    user_id BIGINT CHECK (user_id > 0) NOT NULL,
                                     privilege_type HIGHER_PRIOR NOT NULL,
                                     telegramm_name VARCHAR(50))''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS low_priority_users(
                                     id SERIAL PRIMARY KEY,
-                                    user_id INTEGER CHECK (user_id > 0) NOT NULL,
+                                    user_id BIGINT CHECK (user_id > 0) NOT NULL,
                                     telegramm_name VARCHAR(50),
                                     privilege_type LOWER_PRIOR DEFAULT 'USER',
                                     registration_process_id INTEGER CHECK (registration_process_id > 0) NOT NULL,
@@ -75,11 +76,7 @@ class Database():
         if self.connection is None:
             await self.create_connection()
         
-        await self.connection.execute('''INSERT INTO registration_form 
-                                           (user_id, subject_name, fio, post, telephone_number)
-                                           VALUES ($1, $2, $3, $4, $5)''', args[0],
-                                                                       args[1]['subject'],
-                                                                       args[1]['fio'],
-                                                                       args[1]['post'],
-                                                                       args[1]['telephone_number'])
+        await self.connection.execute('''INSERT INTO registration_process 
+                                           (user_id, subject_name, user_fio, post_name, telephone_number)
+                                           VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
         await self.connection.close()

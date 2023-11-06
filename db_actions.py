@@ -1,4 +1,5 @@
 import asyncpg
+from asyncpg.exceptions import DuplicateDatabaseError
 
 class Database():
     def __init__(self):
@@ -11,9 +12,11 @@ class Database():
         '''
         Создание БД если ее не существует еще
         '''
-        conn = await asyncpg.connect(database='template1',
-                                     user='postgres')
-        await conn.execute('CREATE DATABASE telegram OWNER postgres')
+        conn = await asyncpg.connect(database='template1', user='postgres')
+        try:
+            await conn.execute('CREATE DATABASE telegram OWNER postgres')
+        except DuplicateDatabaseError:
+            pass
         await conn.close()
 
     async def create_connection(self) -> None:
@@ -28,29 +31,36 @@ class Database():
         '''
         if self.connection is None:
             await self.create_connection()
+        await self.connection.execute('''
+                            DO $$ BEGIN
+                                CREATE TYPE STATE AS ENUM ('Decline', 'Accept', 'Pending');
+                                CREATE TYPE LOWER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER');
+                                CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER', 'ADMIN');
+                            EXCEPTION
+                                WHEN duplicate_object THEN null;
+                            END $$;''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS registration_process(
-                            id SERIAL PRIMARY KEY,
-                            subject_name VARCHAR(100),
-                            user_fio VARCHAR(50),
-                            post_name VARCHAR(100),
-                            telephone_number VARCHAR(12),
-                            registration_date DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+                                    id SERIAL PRIMARY KEY,
+                                    subject_name VARCHAR(100),
+                                    user_fio VARCHAR(50),
+                                    post_name VARCHAR(100),
+                                    telephone_number VARCHAR(12),
+                                    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS high_priority_users(
-                            id SERIAL PRIMARY KEY,
-                            user_id INTEGER UNSIGNED NOT NULL,
-                            privilege_type ENUM("USER", "TESTER", "OWNER", "ADMIN"),
-                            telegramm_name VARCHAR(50))''')
-        await self.connection.execute(
-            '''CREATE TABLE IF NOT EXISTS low_priority_users(
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER UNSIGNED NOT NULL,
-                telegramm_name VARCHAR(50),
-                privilege_type ENUM("USER", "TESTER", "OWNER") DEFAULT "USER",
-                registration_process_id INTEGER UNSIGNED NOT NULL,
-                FOREIGN KEY (registration_process_id) REFERENCES registration_process (id),
-                registration_state ENUM("Decline", "Accept", "Pending"),
-                process_regulator INTEGER UNSIGNED NOT NULL,
-                FOREIGN KEY (process_regulator) REFERENCES high_priority_users (id)''')
+                                    id SERIAL PRIMARY KEY,
+                                    user_id INTEGER CHECK (user_id > 0) NOT NULL,
+                                    privilege_type HIGHER_PRIOR NOT NULL,
+                                    telegramm_name VARCHAR(50))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS low_priority_users(
+                                    id SERIAL PRIMARY KEY,
+                                    user_id INTEGER CHECK (user_id > 0) NOT NULL,
+                                    telegramm_name VARCHAR(50),
+                                    privilege_type LOWER_PRIOR DEFAULT 'USER',
+                                    registration_process_id INTEGER CHECK (registration_process_id > 0) NOT NULL,
+                                    FOREIGN KEY (registration_process_id) REFERENCES registration_process (id),
+                                    registration_state STATE DEFAULT 'Pending',
+                                    process_regulator INTEGER CHECK (process_regulator > 0) NOT NULL,
+                                    FOREIGN KEY (process_regulator) REFERENCES high_priority_users (id))''')
         await self.connection.close()
 
     async def add_registration_form(self, *args) -> None:

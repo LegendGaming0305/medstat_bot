@@ -1,7 +1,7 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 
-from states import User_states
+from states import User_states, Admin_states
 from main import db
 from keyboards import *
 
@@ -44,4 +44,4 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
 После чего Вы сможете задать вопрос специалисту''', reply_markup=starting_keyboard.as_markup())
     data = await state.get_data()
     await db.add_registration_form(message.from_user.id, data)
-    await state.clear()
+    await state.set_state(Admin_states.registration_claim)

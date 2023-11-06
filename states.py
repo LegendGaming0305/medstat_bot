@@ -5,3 +5,6 @@ class User_states(StatesGroup):
     reg_fio = State()
     reg_post = State()
     reg_telephone_number = State()
+
+class Admin_states(StatesGroup):
+    registration_claim = State()

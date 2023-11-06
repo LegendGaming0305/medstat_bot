@@ -1,3 +1,5 @@
+from aiogram.fsm.context import FSMContext
+
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
         r"""Функция save_to_txt принимает в себя:
@@ -18,3 +20,10 @@ def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = 
                 print("\n")
                 print(f"The information has been added to the {file_name}.txt file.")
 
+def access_block_decorator(func):
+    async def async_wrapper(quarry_type, state):
+        if await state.get_state() == "Admin_states:registration_claim":
+             await quarry_type.answer(text="Ваше регистрационное заявление подтверждается! Ожидайте.")
+        else:
+            return await func(quarry_type, state)
+    return async_wrapper 

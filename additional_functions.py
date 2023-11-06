@@ -1,4 +1,5 @@
 from aiogram.fsm.context import FSMContext
+import json
 
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
@@ -27,3 +28,8 @@ def access_block_decorator(func):
         else:
             return await func(quarry_type, state)
     return async_wrapper 
+
+def json_reader(path):
+    with open(path, 'r', encoding="utf-8") as j_file:
+        return json.load(j_file)
+        

@@ -1,14 +1,15 @@
-from aiogram import Router, F, types
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-
 from additional_functions import user_registration_decorator
 from states import User_states, Admin_states
 from main import db
 
-lowlvl_ms_router = Router()
+from aiogram.fsm.context import FSMContext
+from aiogram import Router, F, types
+from aiogram.filters import Command
+from keyboards import User_Keyboards
 
-@lowlvl_ms_router.message(Command('start'))
+router = Router()
+
+@router.message(Command('start'))
 @user_registration_decorator
 async def process_start(message: types.Message, state: FSMContext) -> None:
     '''
@@ -16,7 +17,7 @@ async def process_start(message: types.Message, state: FSMContext) -> None:
     '''
     pass
 
-@lowlvl_ms_router.message(User_states.registration)
+@router.message(User_states.registration)
 async def process_subject_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение наименования субъекта МИАЦ
@@ -25,7 +26,7 @@ async def process_subject_input(message: types.Message, state: FSMContext) -> No
     await message.answer('Введите Ваше ФИО строго через пробел')
     await state.set_state(User_states.reg_fio)
 
-@lowlvl_ms_router.message(User_states.reg_fio)
+@router.message(User_states.reg_fio)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение ФИО
@@ -34,7 +35,7 @@ async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     await message.answer('Введите Вашу должность')
     await state.set_state(User_states.reg_post)
 
-@lowlvl_ms_router.message(User_states.reg_post)
+@router.message(User_states.reg_post)
 async def process_post_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение наименования должности
@@ -43,14 +44,14 @@ async def process_post_input(message: types.Message, state: FSMContext) -> None:
     await message.answer('Укажите Ваш номер телефона в формате +7 (999) 999-99-99')
     await state.set_state(User_states.reg_telephone_number)
 
-@lowlvl_ms_router.message(User_states.reg_telephone_number)
+@router.message(User_states.reg_telephone_number)
 async def process_telephone_number_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение номера телефона
     '''
     await state.update_data(telephone_number=message.text)
     await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
-После чего Вы сможете задать вопрос специалисту''', reply_markup=starting_keyboard.as_markup())
+После чего Вы сможете задать вопрос специалисту''', reply_markup=User_Keyboards.user_starting_keyboard.as_markup())
     data = await state.get_data()
     await db.add_registration_form(message.from_user.id, data)
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)

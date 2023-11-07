@@ -117,8 +117,8 @@ class Database():
         if self.connection is None:
             await self.create_connection()
 
-        users_rows = await self.connection.fetch('''SELECT registration_process_id FROM low_priority_users WHERE registration_state = "Pending"''')
-        [user_reg_forms.append(await self.connection.fetch('''SELECT * FROM registration_process WHERE id = ($1)''', users_rows[i])) for i in range(len(users_rows))]
+        users_rows = await self.connection.fetch("""SELECT registration_process_id FROM low_priority_users WHERE registration_state = 'Pending'""")
+        [user_reg_forms.append(await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
 
         return users_rows, user_reg_forms 
     

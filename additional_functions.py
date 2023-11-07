@@ -118,6 +118,6 @@ def fio_handler(fio: str):
     '''
         Обратка фио для придания ему вида: И.И.Иванов
     '''
-    fio = list(map(lambda x: x.capitalize(), fio.split("")))
+    fio = list(map(lambda x: x.capitalize(), fio.split(" ")))
     fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
     return fio

@@ -1,4 +1,4 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
 from aiogram.types import InlineKeyboardButton
 import asyncio as asy
 
@@ -58,30 +58,28 @@ class Admin_Keyboards():
     def main_menu():
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
-            Не может быть аргументом reply_markup
+            Может быть аргументом reply_markup
         '''
-        admin_starting_keyboard = InlineKeyboardBuilder()
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
 
-        admin_starting_keyboard.add(check_registrations)
+        admin_starting_keyboard = InlineKeyboardMarkup(inline_keyboard=[[check_registrations]])
         return admin_starting_keyboard
-   
-    admin_starting_keyboard = main_menu().adjust(1, repeat=True)
-    
+       
     def reg_process_keyboard(user_id):
         '''
             Функция, возвращающая все клавиатуры, связанные с процессом регистрации (с соотношением админ-->юзер)
             Может быть аргументом reply_markup
         '''
-        admin_registrator_keyboard = InlineKeyboardBuilder()
+        
         back_to_checking = InlineKeyboardButton(text='Вернуться', callback_data='check_reg')
         decline = InlineKeyboardButton(text='Отклонить заявку', callback_data=f'dec_app:{user_id}')
         accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}')
 
-        admin_registrator_keyboard.add(back_to_checking, decline, accept)
-
-        return admin_registrator_keyboard.adjust(1, repeat=True)
+        admin_registrator_keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_to_checking],
+                                                                           [decline],
+                                                                           [accept]])
+        return admin_registrator_keyboard
     
     def application_gen(unreg_tuple):
 
@@ -89,13 +87,17 @@ class Admin_Keyboards():
             Отдельная функция, генерирующая кнопки, в з-ти от заявок пользователей
             Может быть аргументом reply_markup
         '''
-        generated_keyboard = InlineKeyboardBuilder()
         unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
         # reg_forms stands for registration_process (id, user_id, subject, name, post, phone, date)
         # unique_keys stands for (reg_process_id)
-        buttons_data = {unique_keys[0]: InlineKeyboardButton(text=fio_handler(registration_forms[3]), callback_data=f"generated_button&uk:{unique_keys[0]}&datetime:{registration_forms[6]}") for i in range(len(registration_forms))}
-        generated_keyboard.add(elem for elem in buttons_data.values())
-        return generated_keyboard.adjust(1, repeat=True)
+        # id = unique_keys[0][0]
+        # date = registration_forms[0][6]
+        # name = registration_forms[0][3]
+
+        buttons_data = {unique_keys[i][0]: InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))}
+        generated_keyboard = InlineKeyboardMarkup(inline_keyboard=[[elem] for elem in buttons_data.values()])
+
+        return generated_keyboard
     
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 

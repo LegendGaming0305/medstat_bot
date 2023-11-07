@@ -44,4 +44,5 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
 После чего Вы сможете задать вопрос специалисту''', reply_markup=starting_keyboard.as_markup())
     data = await state.get_data()
     await db.add_registration_form(message.from_user.id, data)
+    await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.set_state(Admin_states.registration_claim)

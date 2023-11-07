@@ -1,15 +1,18 @@
 from aiogram import Router, F, types
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 
-from keyboards import *
+from additional_functions import user_registration_decorator
 
 router = Router()
 
 @router.message(Command('start'))
-async def process_start(message: types.Message) -> None:
+@user_registration_decorator
+async def process_start(message: types.Message, state: FSMContext) -> None:
     '''
     Выдаем пользователю определенный набор кнопок от его статуса
     '''
-    await message.answer('Меню', reply_markup=starting_keyboard.as_markup())
+    pass
+
 
     

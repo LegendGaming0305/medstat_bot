@@ -6,9 +6,8 @@ router = Router()
 @router.callback_query()
 async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
-    Обработка запросов от inline-кнопок admin-a
+    Обработка запросов от inline-кнопок
     '''
 
-    if callback.data == 'admin_panel':
+    if callback.data == 'menu':
         pass
-    

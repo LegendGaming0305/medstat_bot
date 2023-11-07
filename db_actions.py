@@ -47,7 +47,7 @@ class Database():
                                     subject_name VARCHAR(100),
                                     user_fio VARCHAR(50),
                                     post_name VARCHAR(100),
-                                    telephone_number VARCHAR(12),
+                                    telephone_number VARCHAR(20),
                                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS high_priority_users(
                                     id SERIAL PRIMARY KEY,
@@ -63,9 +63,8 @@ class Database():
                                     registration_process_id INTEGER CHECK (registration_process_id > 0) NOT NULL,
                                     FOREIGN KEY (registration_process_id) REFERENCES registration_process (id),
                                     registration_state STATE DEFAULT 'Pending',
-                                    process_regulator INTEGER CHECK (process_regulator > 0) NOT NULL,
+                                    process_regulator INTEGER CHECK (process_regulator > 0) DEFAULT NULL,
                                     FOREIGN KEY (process_regulator) REFERENCES high_priority_users (id))''')
-        await self.connection.close()
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -82,7 +81,6 @@ class Database():
         await self.connection.execute('''INSERT INTO registration_process 
                                            (user_id, subject_name, user_fio, post_name, telephone_number)
                                            VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
-        await self.connection.close()
 
     async def add_higher_users(self) -> None:
         if self.connection is None:
@@ -92,19 +90,15 @@ class Database():
             row = config.PRIORITY_LIST[level]
             [await self.connection.execute('''INSERT INTO high_priority_users (user_id, user_fio, privilege_type) VALUES ($1, $2, $3)''',
                                           row[string_num]["user_id"], row[string_num]["user_fio"], level) for string_num in range(len(row))]
-        await self.connection.close()
 
-    async def after_registration_process(self, args) -> None:
+    async def after_registration_process(self, *args) -> None:
         '''
         Частичное заполнение данных в low_priority_users с ссылкой на registration_process_id
         :params: 
-        
         '''
 
         if self.connection is None:
             await self.create_connection()
 
-        async with self.connection.execute('''SELECT id, user_fio, registration_date FROM registration_process ORDER BY registration_date DESC LIMIT 3''') as exported_information:
-            data_rows = await exported_information.fetchall()
-            await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name) VALUES ($1, $2)''', args[0], args[1])
-            await self.connection.execute('''UPDATE low_priority_users SET registration_process_id = ($1)''', )
+        cursor = await self.connection.fetchrow('''SELECT id, user_fio, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
+        await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])

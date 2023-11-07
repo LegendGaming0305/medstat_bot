@@ -3,10 +3,12 @@ from aiogram.fsm.context import FSMContext
 
 from states import User_states
 from additional_functions import access_block_decorator
+from handlers.callback_handlers_admin import admin_cb_router
 
-router = Router()
+user_cb_router = Router()
+user_cb_router.include_router(admin_cb_router)
 
-@router.callback_query()
+@user_cb_router.callback_query()
 async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок user-a

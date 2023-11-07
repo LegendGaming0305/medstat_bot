@@ -3,9 +3,9 @@ from aiogram.fsm.context import FSMContext
 
 from keyboards import *
 
-router = Router()
+owner_cb_router = Router()
 
-@router.callback_query()
+@owner_cb_router.callback_query()
 async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок owner-a

@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio as asy
 from asyncpg.exceptions._base import InterfaceError
 
-from handlers import message_handlers_general, callback_handlers_user, message_handler_user, callback_handlers_owner, callback_handlers_admin, message_handlers_admin, message_handlers_owner
+from handlers import message_handlers_general, callback_handlers_general
 from non_script_files import config 
 from db_actions import Database
 
@@ -28,11 +28,8 @@ async def main() -> None:
     await bot.delete_webhook(drop_pending_updates=True)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
-    dp.include_routers(message_handlers_general.router, 
-                       message_handler_user.router, 
-                       callback_handlers_user.router,
-                       callback_handlers_admin.router,
-                       callback_handlers_owner.router)
+    dp.include_routers(message_handlers_general.general_ms_router,  
+                       callback_handlers_general.general_cb_router)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 if __name__ == '__main__':

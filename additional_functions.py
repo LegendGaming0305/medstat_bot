@@ -96,8 +96,11 @@ def user_registration_decorator(func):
         return await registration(quarry_type, state)
     return async_wrapper
               
-def json_reader(path):
+def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-
+def fio_handler(fio: str):
+    fio = list(map(lambda x: x.capitalize(), fio.split("")))
+    fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
+    return fio

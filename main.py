@@ -10,6 +10,9 @@ from handlers import message_handlers_general, callback_handlers_general
 from non_script_files import config 
 from db_actions import Database
 
+class Global_Data_Storage():
+    bot_specimen = ''
+
 dp = Dispatcher(storage=MemoryStorage())
 db = Database()
 
@@ -25,6 +28,7 @@ async def on_shutdown():
 
 async def main() -> None:
     bot = Bot(config.API_TELEGRAM, parse_mode=ParseMode.HTML)
+    Global_Data_Storage.bot_specimen = bot
     await bot.delete_webhook(drop_pending_updates=True)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)

@@ -1,6 +1,11 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton
 
+from db_actions import Database
+from additional_functions import fio_handler
+
+db = Database()
+
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
@@ -29,7 +34,7 @@ class User_Keyboards():
 
 class Owner_Keyboards():
 
-    def buttons_clunge():
+    def main_menu():
         owner_starting_keyboard = InlineKeyboardBuilder()
 
         admin_panel = InlineKeyboardButton(text='Админ-панель', callback_data='admin_panel')
@@ -39,19 +44,51 @@ class Owner_Keyboards():
         owner_starting_keyboard.add(admin_panel, tester_panel, moder_panel, user_panel)
         return owner_starting_keyboard
     
-    owner_starting_keyboard = buttons_clunge().adjust(1, repeat=True)
+    owner_starting_keyboard = main_menu().adjust(1, repeat=True)
 # ----------------------------------------------O-W-N-E-R-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 class Admin_Keyboards():
 
-    def buttons_clunge():
-        admin_starting_keyboard = InlineKeyboardBuilder()
+    def main_menu():
+        admin_starting_keyboard = InlineKeyboardBuilder() ; admin_registrator_keyboard = InlineKeyboardBuilder()
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
+
         admin_starting_keyboard.add(check_registrations)
-        return admin_starting_keyboard
+        return admin_starting_keyboard, admin_registrator_keyboard
+   
+    admin_starting_keyboard = main_menu().adjust(1, repeat=True)
     
-    admin_starting_keyboard = buttons_clunge().adjust(1, repeat=True)
+    def reg_process_keyboard(user_id):
+        admin_registrator_keyboard = InlineKeyboardBuilder()
+        back_to_checking = InlineKeyboardButton(text='Вернуться', callback_data='check_reg')
+        decline = InlineKeyboardButton(text='Отклонить заявку', callback_data=f'dec_app:{user_id}')
+        accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}')
+
+        admin_registrator_keyboard.add(back_to_checking, decline, accept)
+
+        return admin_registrator_keyboard.adjust(1, repeat=True)
+    
+    def application_gen():
+        generated_keyboard = InlineKeyboardBuilder()
+        table_query = db.get_unregistered()
+        unique_keys, registration_forms = table_query[0], table_query[1]
+        # reg_forms stands for registration_process (id, user_id, subject, name, post, phone, date)
+        # unique_keys stands for (reg_process_id)
+        buttons_data = {unique_keys[0]: InlineKeyboardButton(text=fio_handler(registration_forms[3]), callback_data=f"generated_button&uk:{unique_keys[0]}&datetime:{registration_forms[6]}") for i in range(len(registration_forms))}
+        generated_keyboard.add(elem for elem in buttons_data.values())
+        return generated_keyboard
+    
+    admin_application_gen = application_gen().adjust(1, repeat=True)
+
+    
+
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
+# ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
+
+
+
+
+# ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------

@@ -102,3 +102,19 @@ class Database():
 
         cursor = await self.connection.fetchrow('''SELECT id, user_fio, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
         await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])
+
+    async def get_unregistered(self):
+        user_reg_forms = []
+        if self.connection is None:
+            await self.create_connection()
+
+        users_rows = await self.connection.fetch('''SELECT registration_process_id FROM low_priority_users WHERE registration_state = "Pending"''')
+        [user_reg_forms.append(await self.connection.fetch('''SELECT * FROM registration_process WHERE id = ($1)''', users_rows[i])) for i in range(len(users_rows))]
+
+        return users_rows, user_reg_forms 
+    
+    async def get_certain_form(self, form_id):
+        if self.connection is None:
+            await self.create_connection()
+        
+        return await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id)

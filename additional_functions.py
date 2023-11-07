@@ -3,8 +3,6 @@ from aiogram import types
 import json
 from functools import wraps
 
-from keyboards import *
-
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
         r"""Функция save_to_txt принимает в себя:
@@ -86,7 +84,8 @@ def user_registration_decorator(func):
     async def async_wrapper(query_type, state):
         @quarry_definition_decorator
         async def registration(**kwargs):
-            from non_script_files import config  
+            from non_script_files.config import PRIORITY_LIST
+            from keyboards import User_Keyboards, Owner_Keyboards
             prior_user = False
 
             async def prior_keyboard_send(key_type, row):
@@ -96,8 +95,8 @@ def user_registration_decorator(func):
                         prior_user = True
                         await kwargs["answer_type"].answer('Меню', reply_markup=key_type)
                     
-            for level in config.PRIORITY_LIST.keys():
-                row = config.PRIORITY_LIST[level]
+            for level in PRIORITY_LIST.keys():
+                row = PRIORITY_LIST[level]
                 
                 match level:
                      case "OWNER":

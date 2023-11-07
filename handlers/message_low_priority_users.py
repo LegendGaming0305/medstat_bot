@@ -1,15 +1,22 @@
 from aiogram import Router, F, types
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
+from additional_functions import user_registration_decorator
 from states import User_states, Admin_states
 from main import db
-from handlers.message_handlers_admin import admin_ms_router
-from keyboards import *
 
-user_ms_router = Router()
-user_ms_router.include_router(admin_ms_router)
+lowlvl_ms_router = Router()
 
-@user_ms_router.message(User_states.registration)
+@lowlvl_ms_router.message(Command('start'))
+@user_registration_decorator
+async def process_start(message: types.Message, state: FSMContext) -> None:
+    '''
+    Выдаем пользователю определенный набор кнопок от его статуса
+    '''
+    pass
+
+@lowlvl_ms_router.message(User_states.registration)
 async def process_subject_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение наименования субъекта МИАЦ
@@ -18,7 +25,7 @@ async def process_subject_input(message: types.Message, state: FSMContext) -> No
     await message.answer('Введите Ваше ФИО строго через пробел')
     await state.set_state(User_states.reg_fio)
 
-@user_ms_router.message(User_states.reg_fio)
+@lowlvl_ms_router.message(User_states.reg_fio)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение ФИО
@@ -27,7 +34,7 @@ async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     await message.answer('Введите Вашу должность')
     await state.set_state(User_states.reg_post)
 
-@user_ms_router.message(User_states.reg_post)
+@lowlvl_ms_router.message(User_states.reg_post)
 async def process_post_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение наименования должности
@@ -36,7 +43,7 @@ async def process_post_input(message: types.Message, state: FSMContext) -> None:
     await message.answer('Укажите Ваш номер телефона в формате +7 (999) 999-99-99')
     await state.set_state(User_states.reg_telephone_number)
 
-@user_ms_router.message(User_states.reg_telephone_number)
+@lowlvl_ms_router.message(User_states.reg_telephone_number)
 async def process_telephone_number_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение номера телефона

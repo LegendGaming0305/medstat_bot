@@ -3,12 +3,10 @@ from aiogram.fsm.context import FSMContext
 
 from states import User_states
 from additional_functions import access_block_decorator
-from handlers.callback_handlers_admin import admin_cb_router
 
-user_cb_router = Router()
-user_cb_router.include_router(admin_cb_router)
+lowlvl_cb_router = Router()
 
-@user_cb_router.callback_query()
+@lowlvl_cb_router.callback_query()
 async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок user-a
@@ -28,3 +26,12 @@ async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMCo
         await callback.message.edit_text('Методические рекомендации')
     elif callback.data == 'registration':
         await registration_start(callback, state)
+
+@lowlvl_cb_router.callback_query()
+async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+    Обработка запросов от inline-кнопок
+    '''
+
+    if callback.data == 'menu':
+        pass

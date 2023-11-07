@@ -1,5 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton
+import asyncio as asy
 
 from db_actions import Database
 from additional_functions import fio_handler
@@ -59,12 +60,12 @@ class Admin_Keyboards():
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Не может быть аргументом reply_markup
         '''
-        admin_starting_keyboard = InlineKeyboardBuilder() ; admin_registrator_keyboard = InlineKeyboardBuilder()
+        admin_starting_keyboard = InlineKeyboardBuilder()
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
 
         admin_starting_keyboard.add(check_registrations)
-        return admin_starting_keyboard, admin_registrator_keyboard
+        return admin_starting_keyboard
    
     admin_starting_keyboard = main_menu().adjust(1, repeat=True)
     
@@ -82,25 +83,20 @@ class Admin_Keyboards():
 
         return admin_registrator_keyboard.adjust(1, repeat=True)
     
-    def application_gen():
+    def application_gen(unreg_tuple):
 
         '''
             Отдельная функция, генерирующая кнопки, в з-ти от заявок пользователей
-            Не может быть аргументом reply_markup
+            Может быть аргументом reply_markup
         '''
         generated_keyboard = InlineKeyboardBuilder()
-        table_query = db.get_unregistered()
-        unique_keys, registration_forms = table_query[0], table_query[1]
+        unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
         # reg_forms stands for registration_process (id, user_id, subject, name, post, phone, date)
         # unique_keys stands for (reg_process_id)
         buttons_data = {unique_keys[0]: InlineKeyboardButton(text=fio_handler(registration_forms[3]), callback_data=f"generated_button&uk:{unique_keys[0]}&datetime:{registration_forms[6]}") for i in range(len(registration_forms))}
         generated_keyboard.add(elem for elem in buttons_data.values())
-        return generated_keyboard
+        return generated_keyboard.adjust(1, repeat=True)
     
-    admin_application_gen = application_gen().adjust(1, repeat=True)
-
-    
-
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------

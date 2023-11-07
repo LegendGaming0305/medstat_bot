@@ -1,7 +1,6 @@
 import asyncpg
 from asyncpg.exceptions import DuplicateDatabaseError
 
-from non_script_files import config
 
 class Database():
     def __init__(self):
@@ -83,6 +82,7 @@ class Database():
                                            VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
 
     async def add_higher_users(self) -> None:
+        from non_script_files.config import PRIORITY_LIST
         '''
         Внесение данных о пользователей высшего ранга: Moder, Admin, Owner.
         Данные извлекаются из json-файла
@@ -91,8 +91,8 @@ class Database():
         if self.connection is None:
             await self.create_connection()
 
-        for level in config.PRIORITY_LIST.keys():
-            row = config.PRIORITY_LIST[level]
+        for level in PRIORITY_LIST.keys():
+            row = PRIORITY_LIST[level]
             [await self.connection.execute('''INSERT INTO high_priority_users (user_id, user_fio, privilege_type) VALUES ($1, $2, $3)''',
                                           row[string_num]["user_id"], row[string_num]["user_fio"], level) for string_num in range(len(row))]
 

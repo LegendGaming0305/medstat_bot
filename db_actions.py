@@ -83,6 +83,11 @@ class Database():
                                            VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
 
     async def add_higher_users(self) -> None:
+        '''
+        Внесение данных о пользователей высшего ранга: Moder, Admin, Owner.
+        Данные извлекаются из json-файла
+        '''
+
         if self.connection is None:
             await self.create_connection()
 
@@ -94,6 +99,7 @@ class Database():
     async def after_registration_process(self, *args) -> None:
         '''
         Частичное заполнение данных в low_priority_users с ссылкой на registration_process_id
+        из registration_process 
         :params: 
         '''
 
@@ -104,6 +110,9 @@ class Database():
         await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])
 
     async def get_unregistered(self):
+        '''
+        Извлечение данных о пользователях, со статусом регистрации "Pending"
+        '''
         user_reg_forms = []
         if self.connection is None:
             await self.create_connection()
@@ -114,6 +123,9 @@ class Database():
         return users_rows, user_reg_forms 
     
     async def get_certain_form(self, form_id):
+        '''
+            Извлечение данных о форме по её id
+        '''
         if self.connection is None:
             await self.create_connection()
         

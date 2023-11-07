@@ -26,6 +26,12 @@ def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = 
                 print(f"The information has been added to the {file_name}.txt file.")
 
 def access_block_decorator(func):
+    '''
+    Как работает этот декоратор:
+    1. Принимается декорируемая функция так, что в обертке определяются значения quarry_type и state
+    2. Далее идет проверка на текущий статус - если он равен Admin_states:registration_claim, то юзеру 
+    запрещен доступ к декорируемой функции
+    '''
     async def async_wrapper(quarry_type, state):
         if await state.get_state() == "Admin_states:registration_claim":
              await quarry_type.answer(text="Ваше регистрационное заявление подтверждается! Ожидайте.")
@@ -36,40 +42,48 @@ def access_block_decorator(func):
 def quarry_definition_decorator(func):
     """
         Как работает этот декоратор:
-        1. С помощью оберточной функции и именованных аргументов, заключенных в **kwargs,
-        декоратор вычленяет значение переменных, что представляют собой изменяемые объекты 
-        в з-ти от типа запроса: переменная вычисления message_id, переменная вычисления user_id,
-        и другие;
-        2. Внутри декоратора выполняется проверка на тип запроса и только затем 
-        вышеуказанные переменные меняются на те, что требует тот или иной тип запроса;
-        3. После перезаписи возвращается принимаемая функция, но уже с перезаписанными 
-        переменными;
+        1. Обертка async_wrapper принимает в себя quarry_type, state (именованные аргументы) и позиционные аргументы,
+        такие, что kwargs планируется быть пустым при старте работы обертки
+        2. В зависимости от типа query_type контейнер kwargs наполняется нужными переменными 
+        в зависимости: ключ-значение
+        3. Декорируемая функция (обязательно в условии распологающая kwargs-ом) возвращается, но уже с 
+        заполненным контейнером kwargs
     """
     @wraps(func) 
-    async def async_wrapper(quarry_type, state, **kwargs):             
-                if isinstance(quarry_type, types.Message) == True:
+    async def async_wrapper(query_type, state, **kwargs):             
+                if isinstance(query_type, types.Message) == True:
                     kwargs.update({
-                        "chat_id": quarry_type.chat.id,
-                        "user_id": quarry_type.from_user.id,
-                        "chat_type": quarry_type.chat.type,
-                        "answer_type": quarry_type,
-                        "message_id": quarry_type.message_id,
+                        "chat_id": query_type.chat.id,
+                        "user_id": query_type.from_user.id,
+                        "chat_type": query_type.chat.type,
+                        "answer_type": query_type,
+                        "message_id": query_type.message_id,
                         "edit_text": None
                         })
-                elif isinstance(quarry_type, types.CallbackQuery) == True:
+                elif isinstance(query_type, types.CallbackQuery) == True:
                     kwargs.update({
-                        "chat_id": quarry_type.message.chat.id,
-                        "user_id": quarry_type.from_user.id,
-                        "chat_type": quarry_type.message.chat.type,
-                        "answer_type": quarry_type.message,
-                        "message_id": quarry_type.message.message_id,
-                        "edit_text": quarry_type.message.edit_text
+                        "chat_id": query_type.message.chat.id,
+                        "user_id": query_type.from_user.id,
+                        "chat_type": query_type.message.chat.type,
+                        "answer_type": query_type.message,
+                        "message_id": query_type.message.message_id,
+                        "edit_text": query_type.message.edit_text
                         })
                 return await func(**kwargs) 
     return async_wrapper    
 
 def user_registration_decorator(func):
-    async def async_wrapper(quarry_type, state):
+    ''' 
+    Как работает этот декоратор:
+    1. Обертка принимает query_type и state от функции, что обернута async_wrapper-ом.
+    2. Далее происходит декорирование асинхронной функции registration так, что:
+    - В quarry_definition_decorator поступают query_type и state;
+    - В з-ти от query_type kwargs наполняется необходимыми для регистрации переменными (user_id, chat_id, answer_type и др);
+    - Возвращается функция registration но уже с позиционными аргументами kwargs, которые используются далее при регистрации;
+    3. Функция registration поначалу проверяет json-файл с приоритетами по user_id из kwargs,
+    затем, если пользователь все ещё не идентифицирован, то автоматически он определяется как USER
+    '''
+    async def async_wrapper(query_type, state):
         @quarry_definition_decorator
         async def registration(**kwargs):
             from non_script_files import config  
@@ -92,15 +106,19 @@ def user_registration_decorator(func):
             if prior_user == False:
                 await kwargs["answer_type"].answer('Меню', reply_markup=User_Keyboards.user_starting_keyboard.as_markup())
             
-            return await func(quarry_type, state)
-        return await registration(quarry_type, state)
+            return await func(query_type, state)
+        return await registration(query_type, state)
     return async_wrapper
               
 def json_reader(path: str):
+    '''Чтение json-файла и возврат значения'''
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
 def fio_handler(fio: str):
+    '''
+        Обратка фио для придания ему вида: И.И.Иванов
+    '''
     fio = list(map(lambda x: x.capitalize(), fio.split("")))
     fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
     return fio

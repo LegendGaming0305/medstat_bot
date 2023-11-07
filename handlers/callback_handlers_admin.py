@@ -27,9 +27,11 @@ async def process_starting_callbacks(callback: types.CallbackQuery, state: FSMCo
         callback_data = callback_data.split(":")
         await Global_Data_Storage.bot_specimen.send_message(chat_id = int(callback_data[1]), text="Ваша заявка была подтверждена", reply_markup=Admin_Keyboards.admin_application_gen)
 
-
 @admin_cb_router.callback_query(lambda callback: "generated" in callback, state = Admin_states.registration_claim)
 async def gen_button_processing(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+        Обработка callback-а от сгенерированной кнопки
+    '''
     callback = callback.data ; callback = callback.split("&") ; callback = callback[1].split(":")
     
     callback_id = int(callback[1])

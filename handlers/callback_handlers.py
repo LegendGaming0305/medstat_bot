@@ -12,13 +12,14 @@ from additional_functions import access_block_decorator
 db = Database()
 router = Router()
 
-@router.callback_query(User_states.question_process)
+@router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок форм
     '''
-    test = callback.data
-    
+    await state.set_state(User_states.question_process)
+    await state.update_data(tag=callback.data)
+    await callback.message.edit_text('Введите Ваш вопрос.')
 
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -79,7 +80,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         match status:
             case 'Accept':
                 await callback.message.edit_text(text='Выберите раздел', reply_markup=User_Keyboards.section_chose().as_markup())
-                await state.set_state(User_states.question_process)
+                await state.set_state(User_states.form_choosing)
             case 'Pending':
                 await callback.message.edit_text(text='Ваша заявка на рассмотрении и пока что у Вас нет доступа к этому разделу.',
                                              reply_markup=User_Keyboards.main_menu(True))

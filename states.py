@@ -6,6 +6,7 @@ class User_states(StatesGroup):
     reg_post = State()
     reg_telephone_number = State()
     registration_accepted = State()
+    form_choosing = State()
     question_process = State()
 
 class Admin_states(StatesGroup):

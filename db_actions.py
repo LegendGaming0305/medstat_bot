@@ -66,9 +66,17 @@ class Database():
                                     FOREIGN KEY (process_regulator) REFERENCES high_priority_users (id))''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS form_types(
                                       id SERIAL PRIMARY KEY,
-                                      form_name VARCHAR(150),
-                                    
-        )''')
+                                      form_name VARCHAR(250),
+                                      form_tag VARCHAR(10))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS questions_about_forms(
+                                      id SERIAL PRIMARY KEY,
+                                      user_id BIGINT CHECK (user_id > 0) NOT NULL,
+                                      question TEXT,
+                                      question_form SMALLINT CHECK (question_form > 0) NOT NULL,
+                                      specialist_id BIGINT CHECK (specialist_id > 0),
+                                      answer TEXT,
+                                      answer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      FOREIGN KEY (question_form) REFERENCES form_types (id))''')
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -147,7 +155,7 @@ class Database():
         await self.connection.execute('''UPDATE low_priority_users SET registration_state = ($1), process_regulator = ($2) WHERE id = ($3)''', 
                                       reg_status, inspector_id, string_id)
         
-    async def check_status(self, user_id: int) -> list:
+    async def check_status(self, user_id: int) -> str:
         '''
         Получение статуса пользователя по его заявке на регистрацию
         '''
@@ -157,3 +165,14 @@ class Database():
         result = await self.connection.fetchval('''SELECT registration_state FROM low_priority_users WHERE user_id = ($1)''', 
                                     user_id)
         return result
+    
+    async def process_question(self, user_id: int, question: str, form: str) -> None:
+        '''
+        Ввод вопроса по форме в БД
+        '''
+        if self.connection is None:
+            await self.create_connection()
+        form_id = await self.connection.fetchval('''SELECT id FROM form_types WHERE form_tag = $1''', form)
+        await self.connection.execute('''INSERT INTO questions_about_forms (user_id, question, question_form)
+                                      VALUES ($1, $2, $3)''', user_id, question, form_id)
+    

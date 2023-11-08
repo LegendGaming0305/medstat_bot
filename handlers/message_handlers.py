@@ -57,3 +57,13 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.clear()
+
+@router.message(User_states.question_process)
+async def process_question_input(message: types.Message, state: FSMContext) -> None:
+    '''
+    Передача вопроса в бд
+    '''
+    data = await state.get_data()
+    await db.process_question(user_id=message.from_user.id, question=message.text, form=data['tag'])
+    await message.answer('Ваш вопрос передан', reply_markup=User_Keyboards.main_menu().as_markup())
+    await state.clear()

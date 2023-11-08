@@ -10,7 +10,7 @@ db = Database()
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
-    def main_menu(filled_form = False):
+    def main_menu(filled_form = False) -> InlineKeyboardBuilder:
 
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
@@ -40,7 +40,7 @@ class User_Keyboards():
         
         return user_starting_keyboard.adjust(1, repeat=True)
     
-    def section_chose():
+    def section_chose() -> InlineKeyboardBuilder:
         section_key = InlineKeyboardBuilder()
 
         button_one = InlineKeyboardButton(text='• Ф. № 30 Латышова А.А.', callback_data='sec_one')
@@ -66,7 +66,7 @@ class User_Keyboards():
 
 class Owner_Keyboards():
 
-    def main_menu():
+    def main_menu() -> InlineKeyboardBuilder:
         owner_starting_keyboard = InlineKeyboardBuilder()
 
         admin_panel = InlineKeyboardButton(text='Админ-панель', callback_data='admin_panel')
@@ -82,7 +82,7 @@ class Owner_Keyboards():
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 class Admin_Keyboards():
 
-    def main_menu():
+    def main_menu() -> InlineKeyboardBuilder:
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
@@ -94,7 +94,7 @@ class Admin_Keyboards():
         admin_starting_keyboard.add(check_registrations)
         return admin_starting_keyboard.as_markup()
        
-    def reg_process_keyboard(user_id, user_string_id):
+    def reg_process_keyboard(user_id, user_string_id) -> InlineKeyboardBuilder:
         '''
             Функция, возвращающая все клавиатуры, связанные с процессом регистрации (с соотношением админ-->юзер)
             Может быть аргументом reply_markup

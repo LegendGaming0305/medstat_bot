@@ -124,7 +124,7 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-def fio_handler(fio: str):
+def fio_handler(fio: str) -> str:
     '''
         Обратка фио для придания ему вида: И.И.Иванов
     '''

@@ -1,6 +1,5 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton
-import asyncio as asy
 
 from db_actions import Database
 from additional_functions import fio_handler
@@ -88,25 +87,28 @@ class Admin_Keyboards():
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
         '''
+        admin_starting_keyboard = InlineKeyboardBuilder()
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
 
-        admin_starting_keyboard = InlineKeyboardMarkup(inline_keyboard=[[check_registrations]])
-        return admin_starting_keyboard
+        admin_starting_keyboard.add(check_registrations)
+        return admin_starting_keyboard.as_markup()
        
     def reg_process_keyboard(user_id, user_string_id):
         '''
             Функция, возвращающая все клавиатуры, связанные с процессом регистрации (с соотношением админ-->юзер)
             Может быть аргументом reply_markup
         '''
+        admin_registrator_keyboard = InlineKeyboardBuilder()
         
         back_to_checking = InlineKeyboardButton(text='Вернуться', callback_data='check_reg')
         decline = InlineKeyboardButton(text='Отклонить заявку', callback_data=f'dec_app:{user_id}:{user_string_id}')
         accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}:{user_string_id}')
 
-        admin_registrator_keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_to_checking],
-                                                                           [decline],
-                                                                           [accept]])
+        admin_registrator_keyboard.add(accept, decline,
+                                       back_to_checking)
+        admin_registrator_keyboard.adjust(2, 1)
+
         return admin_registrator_keyboard
     
     def application_gen(unreg_tuple):
@@ -121,9 +123,10 @@ class Admin_Keyboards():
         # id = unique_keys[0][0]
         # date = registration_forms[0][6]
         # name = registration_forms[0][3]
-
-        buttons_data = {unique_keys[i][0]: InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))}
-        generated_keyboard = InlineKeyboardMarkup(inline_keyboard=[[elem] for elem in buttons_data.values()])
+        generated_keyboard = InlineKeyboardBuilder()
+        buttons_data = [InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))]
+        generated_keyboard.add(*[elem for elem in buttons_data])
+        generated_keyboard.adjust(3, repeat=True)
 
         return generated_keyboard
     

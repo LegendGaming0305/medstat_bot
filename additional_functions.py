@@ -1,4 +1,3 @@
-from aiogram.fsm.context import FSMContext
 from aiogram import types
 import json
 from functools import wraps
@@ -29,6 +28,8 @@ def access_block_decorator(func):
     1. Принимается декорируемая функция так, что в обертке определяются значения quarry_type и state
     2. Далее идет проверка на текущий статус - если он равен Admin_states:registration_claim, то юзеру 
     запрещен доступ к декорируемой функции
+    Это не будет работать на проверке статусов. Так как у каждого юзера уникален и ты не сможешь его поставить удаленно
+    определенный статус без взаимодействия юзера с ботом
     '''
     async def async_wrapper(quarry_type, state):
         if await state.get_state() == "Admin_states:registration_claim":
@@ -106,8 +107,13 @@ def user_registration_decorator(func):
                         await prior_keyboard_send(key_type=Owner_Keyboards.owner_starting_keyboard.as_markup(), row=row)
                 
             if prior_user == False:
-                current_state = await state.get_state()
-                await kwargs["answer_type"].answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup()) if current_state == "Admin_states:registration_claim" else await kwargs["answer_type"].answer('Меню', reply_markup=User_Keyboards.main_menu().as_markup())
+                from main import db
+                status = await db.check_status(kwargs['user_id'])
+                if status is None or status == 'Decline':
+                    await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())
+                elif status in ('Accept', 'Pending'):
+                    await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+                    
 
             return await func(query_type, state)
         return await registration(query_type, state)

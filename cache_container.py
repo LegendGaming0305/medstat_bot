@@ -1,5 +1,4 @@
 from aiocache import caches, SimpleMemoryCache
-import pandas as pd
 
 # Создаем кэш хранилище
 cache = SimpleMemoryCache()

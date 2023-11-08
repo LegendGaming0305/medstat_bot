@@ -17,7 +17,7 @@ async def process_start(message: types.Message, state: FSMContext) -> None:
     '''
     Выдаем пользователю определенный набор кнопок от его статуса
     '''
-    pass
+    await state.clear()
 
 @router.message(User_states.registration)
 async def process_subject_input(message: types.Message, state: FSMContext) -> None:
@@ -56,4 +56,4 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
 После чего Вы сможете задать вопрос специалисту''', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
-    await state.set_state(Admin_states.registration_claim)
+    await state.clear()

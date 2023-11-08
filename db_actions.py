@@ -64,6 +64,11 @@ class Database():
                                     registration_state STATE DEFAULT 'Pending',
                                     process_regulator INTEGER CHECK (process_regulator > 0) DEFAULT NULL,
                                     FOREIGN KEY (process_regulator) REFERENCES high_priority_users (id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS form_types(
+                                      id SERIAL PRIMARY KEY,
+                                      form_name VARCHAR(150),
+                                    
+        )''')
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -109,7 +114,7 @@ class Database():
         cursor = await self.connection.fetchrow('''SELECT id, user_fio, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
         await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])
 
-    async def get_unregistered(self):
+    async def get_unregistered(self) -> tuple:
         '''
         Извлечение данных о пользователях, со статусом регистрации "Pending"
         '''
@@ -122,7 +127,7 @@ class Database():
 
         return users_rows, user_reg_forms 
     
-    async def get_form_or_user(self, form_id):
+    async def get_form_or_user(self, form_id) -> tuple:
         '''
             Извлечение данных о форме по её id
         '''
@@ -133,7 +138,7 @@ class Database():
         user_info = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE registration_process_id = ($1)''', form_id)
         return form_info, user_info
     
-    async def update_registration_status(self, string_id, admin_id, reg_status):
+    async def update_registration_status(self, string_id, admin_id, reg_status) -> None:
         string_id = int(string_id)
         if self.connection is None:
             await self.create_connection()
@@ -141,3 +146,14 @@ class Database():
         inspector_id = inspector_id[0]
         await self.connection.execute('''UPDATE low_priority_users SET registration_state = ($1), process_regulator = ($2) WHERE id = ($3)''', 
                                       reg_status, inspector_id, string_id)
+        
+    async def check_status(self, user_id: int) -> list:
+        '''
+        Получение статуса пользователя по его заявке на регистрацию
+        '''
+        if self.connection is None:
+            await self.create_connection()
+        
+        result = await self.connection.fetchval('''SELECT registration_state FROM low_priority_users WHERE user_id = ($1)''', 
+                                    user_id)
+        return result

@@ -4,13 +4,9 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio as asy
-from asyncpg.exceptions._base import InterfaceError
 
 from non_script_files.config import API_TELEGRAM
 from db_actions import Database
-
-class Global_Data_Storage():
-    bot_specimen = ''
 
 dp = Dispatcher(storage=MemoryStorage())
 db = Database()

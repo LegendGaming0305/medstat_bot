@@ -116,17 +116,28 @@ class Database():
         user_reg_forms = []
         if self.connection is None:
             await self.create_connection()
-
+         
         users_rows = await self.connection.fetch("""SELECT registration_process_id FROM low_priority_users WHERE registration_state = 'Pending'""")
         [user_reg_forms.append(await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
 
         return users_rows, user_reg_forms 
     
-    async def get_certain_form(self, form_id):
+    async def get_form_or_user(self, form_id):
         '''
             Извлечение данных о форме по её id
         '''
         if self.connection is None:
             await self.create_connection()
         
-        return await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id)
+        form_info = await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id)
+        user_info = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE registration_process_id = ($1)''', form_id)
+        return form_info, user_info
+    
+    async def update_registration_status(self, string_id, admin_id, reg_status):
+        string_id = int(string_id)
+        if self.connection is None:
+            await self.create_connection()
+        inspector_id = await self.connection.fetchrow('''SELECT id FROM high_priority_users WHERE user_id = ($1)''', admin_id)
+        inspector_id = inspector_id[0]
+        await self.connection.execute('''UPDATE low_priority_users SET registration_state = ($1), process_regulator = ($2) WHERE id = ($3)''', 
+                                      reg_status, inspector_id, string_id)

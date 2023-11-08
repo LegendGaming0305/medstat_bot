@@ -4,17 +4,18 @@ import asyncio as asy
 
 from db_actions import Database
 from additional_functions import fio_handler
+from cache_container import cache
 
 db = Database()
 
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
-    
-    def main_menu():
+    def main_menu(filled_form = False):
+
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
-            Не может быть аргументом reply_markup
+            Может быть аргументом reply_markup
         '''
         user_starting_keyboard = InlineKeyboardBuilder()
 
@@ -24,15 +25,42 @@ class User_Keyboards():
         method_recommendations_button = InlineKeyboardButton(text='Методические рекомендации', callback_data='method_recommendations')
         registration_button = InlineKeyboardButton(text='Регистрация', callback_data='registration')
         make_question_button = InlineKeyboardButton(text='Задать вопрос', callback_data='make_question')
-        user_starting_keyboard.add(npa_button, 
-                      medstat_button, 
-                      statistic_button, 
-                      method_recommendations_button, 
-                      registration_button)
         
-        return user_starting_keyboard
+        if filled_form == False:
+            user_starting_keyboard.add(npa_button, 
+                        medstat_button, 
+                        statistic_button, 
+                        method_recommendations_button, 
+                        registration_button)
+        else:
+            user_starting_keyboard.add(npa_button, 
+                        medstat_button, 
+                        statistic_button, 
+                        method_recommendations_button, 
+                        make_question_button)
+        
+        return user_starting_keyboard.adjust(1, repeat=True)
+    
+    def section_chose():
+        section_key = InlineKeyboardBuilder()
 
-    user_starting_keyboard = main_menu().adjust(1, repeat=True)
+        button_one = InlineKeyboardButton(text='• Ф. № 30 Латышова А.А.', callback_data='sec_one')
+        button_two = InlineKeyboardButton(text='• Ф. № 30 Тюрина Е.М.', callback_data='sec_two')
+        button_three = InlineKeyboardButton(text='• Ф. № 30 Шелепова Е.А.', callback_data='sec_three')
+        button_four = InlineKeyboardButton(text='• Ф. № 14-ДС; Ф. 30 (в части работы СМП) Шляфер С.И.', callback_data='sec_four')
+        button_five = InlineKeyboardButton(text='• Ф. № 47', callback_data='sec_five')
+        button_six = InlineKeyboardButton(text='• ф. № 8, 33, 2-ТБ, 7-ТБ, 8-ТБ, 10-ТБ (туберкулез);', callback_data='sec_six')
+        button_seven = InlineKeyboardButton(text='• Ф. № 12, 12-село', callback_data='sec_seven')
+        button_eight = InlineKeyboardButton(text='• Ф. № 14, 19, 41, 54, 16-ВН, 1-РБ, 1-Дети (здрав), 32, 232(вкладыш), 53, 70', callback_data='sec_eight')
+        button_nine = InlineKeyboardButton(text='• Специализированные формы (№ 7, 9, 34; Ф. № 10, 36; Ф. № 36 -ПЛ; Ф. № 11, 37; Ф. № 13; Ф. № 15; Ф. № 55, 56; Ф. № 57; Ф. № 61; Ф. № 64 ; Ф. № 30 (в части работы Лабораторной службы)', callback_data='sec_nine')
+        button_ten = InlineKeyboardButton(text='Чат координаторов', callback_data='sec_ten')
+
+        section_key.add(button_one, button_two, button_three, button_four, 
+                        button_five, button_six, button_seven, button_eight,
+                        button_nine, button_ten)
+        
+        return section_key.adjust(1, repeat=True)
+
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------O-W-N-E-R-P-A-N-E-L----------------------------------------------
@@ -66,15 +94,15 @@ class Admin_Keyboards():
         admin_starting_keyboard = InlineKeyboardMarkup(inline_keyboard=[[check_registrations]])
         return admin_starting_keyboard
        
-    def reg_process_keyboard(user_id):
+    def reg_process_keyboard(user_id, user_string_id):
         '''
             Функция, возвращающая все клавиатуры, связанные с процессом регистрации (с соотношением админ-->юзер)
             Может быть аргументом reply_markup
         '''
         
         back_to_checking = InlineKeyboardButton(text='Вернуться', callback_data='check_reg')
-        decline = InlineKeyboardButton(text='Отклонить заявку', callback_data=f'dec_app:{user_id}')
-        accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}')
+        decline = InlineKeyboardButton(text='Отклонить заявку', callback_data=f'dec_app:{user_id}:{user_string_id}')
+        accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}:{user_string_id}')
 
         admin_registrator_keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_to_checking],
                                                                            [decline],

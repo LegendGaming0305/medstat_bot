@@ -1,11 +1,13 @@
 from additional_functions import user_registration_decorator
 from states import User_states, Admin_states
 from main import db
+from keyboards import User_Keyboards
+from cache_container import cache
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
-from keyboards import User_Keyboards
+import json
 
 router = Router()
 
@@ -51,8 +53,7 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     '''
     await state.update_data(telephone_number=message.text)
     await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
-После чего Вы сможете задать вопрос специалисту''', reply_markup=User_Keyboards.user_starting_keyboard.as_markup())
-    data = await state.get_data()
-    await db.add_registration_form(message.from_user.id, data)
+После чего Вы сможете задать вопрос специалисту''', reply_markup=User_Keyboards.main_menu(True).as_markup())
+    await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.set_state(Admin_states.registration_claim)

@@ -32,7 +32,10 @@ def access_block_decorator(func):
     '''
     async def async_wrapper(quarry_type, state):
         if await state.get_state() == "Admin_states:registration_claim":
-             await quarry_type.answer(text="Ваше регистрационное заявление подтверждается! Ожидайте.")
+            await quarry_type.answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
+        elif await state.get_state() == "User_states:registration_accepted":
+            await quarry_type.answer(text="Вы успешно зашли")
+            return await func(quarry_type, state)
         else:
             return await func(quarry_type, state)
     return async_wrapper 
@@ -103,8 +106,9 @@ def user_registration_decorator(func):
                         await prior_keyboard_send(key_type=Owner_Keyboards.owner_starting_keyboard.as_markup(), row=row)
                 
             if prior_user == False:
-                await kwargs["answer_type"].answer('Меню', reply_markup=User_Keyboards.user_starting_keyboard.as_markup())
-            
+                current_state = await state.get_state()
+                await kwargs["answer_type"].answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup()) if current_state == "Admin_states:registration_claim" else await kwargs["answer_type"].answer('Меню', reply_markup=User_Keyboards.main_menu().as_markup())
+
             return await func(query_type, state)
         return await registration(query_type, state)
     return async_wrapper

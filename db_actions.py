@@ -135,15 +135,16 @@ class Database():
 
         return users_rows, user_reg_forms 
     
-    async def get_form_or_user(self, form_id) -> tuple:
+    async def get_massive_of_values(self, form_id: int = None, user_id: int = None) -> tuple:
         '''
-            Извлечение данных о форме по её id
+            Извлечение всех данных о форме юзера (reg. process) или же о его данных (low_priority) по id формы или по user_id 
         '''
         if self.connection is None:
             await self.create_connection()
         
-        form_info = await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id)
-        user_info = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE registration_process_id = ($1)''', form_id)
+        form_info = await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id) if form_id else await self.connection.fetchrow('''SELECT * FROM registration_process WHERE user_id = ($1)''', user_id)
+        user_info = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE registration_process_id = ($1)''', form_id) if form_id else await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE user_id = ($1)''', user_id)
+
         return form_info, user_info
     
     async def update_registration_status(self, string_id, admin_id, reg_status) -> None:
@@ -155,16 +156,18 @@ class Database():
         await self.connection.execute('''UPDATE low_priority_users SET registration_state = ($1), process_regulator = ($2) WHERE id = ($3)''', 
                                       reg_status, inspector_id, string_id)
         
-    async def check_status(self, user_id: int) -> str:
+    async def get_certain_value(self, data_to_find: str, user_id: int = None, form_id: int = None) -> str:
         '''
-        Получение статуса пользователя по его заявке на регистрацию
+        Получение данных пользователя по его заявке на регистрацию (reg. process) или же по его данным в low_priority таблице
+        посредством user_id или form_id 
         '''
         if self.connection is None:
             await self.create_connection()
+
+        user_info = await self.connection.fetchval('''SELECT ($1) FROM low_priority_users WHERE user_id = ($2)''', data_to_find, user_id) if user_id else await self.connection.fetchval('''SELECT (&1) FROM low_priority_users WHERE user_id = ($2)''', data_to_find, form_id)
+        form_info = await self.connection.fetchval('''SELECT ($1) FROM registration_process WHERE user_id = ($2)''', data_to_find, user_id) if user_id else await self.connection.fetchval('''SELECT (&1) FROM registration_process WHERE user_id = ($2)''', data_to_find, form_id)
         
-        result = await self.connection.fetchval('''SELECT registration_state FROM low_priority_users WHERE user_id = ($1)''', 
-                                    user_id)
-        return result
+        return form_info, user_info
     
     async def process_question(self, user_id: int, question: str, form: str) -> None:
         '''

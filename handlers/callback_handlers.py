@@ -6,8 +6,6 @@ from keyboards import Admin_Keyboards, User_Keyboards
 from db_actions import Database
 from states import Admin_states
 from states import User_states
-from additional_functions import access_block_decorator
-
 
 db = Database()
 router = Router()
@@ -50,10 +48,8 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         await callback.message.edit_text('Меню', reply_markup=Admin_Keyboards.main_menu())
         await state.clear()
     elif "generated" in callback_data:
-        cb_data = callback.data ; cb_data = cb_data.split("&") ; cb_data = cb_data[1].split(":")
-    
-        callback_id = int(cb_data[1])
-        info_tuple = await db.get_form_or_user(callback_id)
+        cb_data = callback.data ; cb_data = cb_data.split("&") ; cb_data = cb_data[1].split(":") ; callback_id = int(cb_data[1])
+        info_tuple = await db.get_massive_of_values(user_id=callback_id)
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
         information_panel = f"""Название субъекта: {form_info_list[2]},\nФИО: {form_info_list[3]},\nДолжность: {form_info_list[4]},\nНомер телефона: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
@@ -76,16 +72,16 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await state.set_state(User_states.registration)
         await callback.message.edit_text('Введите наименование вашего МИАЦ')
     elif callback.data == "make_question":
-        status = await db.check_status(user_id=callback.from_user.id)
+        status = await db.get_certain_value(data_to_find="privilege_type", user_id=callback.from_user.id)
         match status:
             case 'Accept':
                 await callback.message.edit_text(text='Выберите раздел', reply_markup=User_Keyboards.section_chose().as_markup())
                 await state.set_state(User_states.form_choosing)
             case 'Pending':
-                await callback.message.edit_text(text='Ваша заявка на рассмотрении и пока что у Вас нет доступа к этому разделу.',
+                await callback.message.edit_text(text='Ваша заявка на рассмотрении и пока что у Вас нет доступа к этому разделу',
                                              reply_markup=User_Keyboards.main_menu(True))
             case 'Decline':
-                await callback.message.edit_text(text='Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу.',
+                await callback.message.edit_text(text='Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу',
                                              reply_markup=User_Keyboards.main_menu(False))
     elif callback.data == 'admin_panel':
         await callback.message.edit_text(text="Добро пожаловать в Админ-панель", reply_markup=Admin_Keyboards.main_menu())

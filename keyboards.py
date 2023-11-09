@@ -1,5 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
 
 from db_actions import Database
 from additional_functions import fio_handler
@@ -120,9 +121,6 @@ class Admin_Keyboards():
         unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
         # reg_forms stands for registration_process (id, user_id, subject, name, post, phone, date)
         # unique_keys stands for (reg_process_id)
-        # id = unique_keys[0][0]
-        # date = registration_forms[0][6]
-        # name = registration_forms[0][3]
         generated_keyboard = InlineKeyboardBuilder()
         buttons_data = [InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))]
         generated_keyboard.add(*[elem for elem in buttons_data])

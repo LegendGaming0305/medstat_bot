@@ -1,6 +1,9 @@
 from aiogram import types
 import json
 from functools import wraps
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardMarkup
+from typing import Union
 
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
@@ -92,7 +95,7 @@ def user_registration_decorator(func):
             from keyboards import User_Keyboards, Owner_Keyboards
             prior_user = False
 
-            async def prior_keyboard_send(key_type, row):
+            async def prior_keyboard_send(key_type: InlineKeyboardBuilder, row: str):
                 nonlocal prior_user
                 for string_num in range(len(row)):
                     if row[string_num]["user_id"] == kwargs["user_id"]:
@@ -103,17 +106,16 @@ def user_registration_decorator(func):
                 row = PRIORITY_LIST[level]
                 
                 match level:
-                     case "OWNER":
+                    case "OWNER":
                         await prior_keyboard_send(key_type=Owner_Keyboards.owner_starting_keyboard.as_markup(), row=row)
                 
             if prior_user == False:
                 from main import db
-                status = await db.check_status(kwargs['user_id'])
+                status = await db.get_certain_value(data_to_find="privilege_type", user_id=kwargs['user_id'])
                 if status is None or status == 'Decline':
                     await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())
                 elif status in ('Accept', 'Pending'):
                     await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
-                    
 
             return await func(query_type, state)
         return await registration(query_type, state)

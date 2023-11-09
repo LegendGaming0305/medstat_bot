@@ -36,7 +36,7 @@ class Database():
                             DO $$ BEGIN
                                 CREATE TYPE STATE AS ENUM ('Decline', 'Accept', 'Pending');
                                 CREATE TYPE LOWER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER');
-                                CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER', 'ADMIN');
+                                CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER', 'ADMIN', 'SPECIALIST');
                             EXCEPTION
                                 WHEN duplicate_object THEN null;
                             END $$;''')
@@ -67,7 +67,9 @@ class Database():
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS form_types(
                                       id SERIAL PRIMARY KEY,
                                       form_name VARCHAR(250),
-                                      form_tag VARCHAR(10))''')
+                                      form_tag VARCHAR(10),
+                                      specialist SMALLINT CHECK (specialist > 0) NOT NULL,
+                                      FOREIGN KEy (specialist) REFERENCES high_priority_users (id))''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS questions_about_forms(
                                       id SERIAL PRIMARY KEY,
                                       user_id BIGINT CHECK (user_id > 0) NOT NULL,
@@ -77,6 +79,7 @@ class Database():
                                       answer TEXT,
                                       answer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                       FOREIGN KEY (question_form) REFERENCES form_types (id))''')
+
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -176,3 +179,27 @@ class Database():
         await self.connection.execute('''INSERT INTO questions_about_forms (user_id, question, question_form)
                                       VALUES ($1, $2, $3)''', user_id, question, form_id)
     
+    async def get_specialits_questions(self, specialist_id: int) -> list:
+        if self.connection is None:
+            await self.create_connection()
+        form_id = await self.connection.fetchval('''SELECT ft.id
+                                                 FROM form_types ft
+                                                 JOIN high_priority_users hp ON ft.specialist = hp.id
+                                                 WHERE hp.user_id = $1''', specialist_id)
+        result = await self.connection.fetch('''SELECT id, question, user_id FROM questions_about_forms WHERE question_form = $1 AND answer IS NULL''',
+                                             form_id)
+        return result
+    
+    async def update_question(self, question_id: int, answer: str, specialist_id: int) -> None:
+        if self.connection is None:
+            await self.create_connection()
+        await self.connection.execute('''UPDATE questions_about_forms SET answer = $1,
+                                      specialist_id = $2,
+                                      answer_date = CURRENT_TIMESTAMP
+                                      WHERE id = $3''', answer, specialist_id, question_id)
+        
+    async def check_question(self, question_id: int) -> str:
+        if self.connection is None:
+            await self.create_connection()
+        result = await self.connection.fetchval('''SELECT answer FROM questions_about_forms WHERE id = $1''', question_id)
+        return result

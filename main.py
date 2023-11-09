@@ -9,6 +9,7 @@ from db_actions import Database
 
 dp = Dispatcher(storage=MemoryStorage())
 db = Database()
+bot = Bot(API_TELEGRAM, parse_mode=ParseMode.HTML)
 
 async def on_startup():
     await db.create_database()
@@ -22,7 +23,6 @@ async def on_shutdown():
 
 async def main() -> None:
     from handlers import message_handlers, callback_handlers
-    bot = Bot(API_TELEGRAM, parse_mode=ParseMode.HTML)
     await bot.delete_webhook(drop_pending_updates=True)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)

@@ -12,3 +12,7 @@ class User_states(StatesGroup):
 class Admin_states(StatesGroup):
     registration_claim = State()
     registration_process = State()
+    
+class Specialist_states(StatesGroup):
+    choosing_question = State()
+    answer_question = State()

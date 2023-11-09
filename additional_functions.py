@@ -1,6 +1,10 @@
 from aiogram import types
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
 from functools import wraps
+
+from cache_container import cache
 
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
@@ -89,7 +93,7 @@ def user_registration_decorator(func):
         @quarry_definition_decorator
         async def registration(**kwargs):
             from non_script_files.config import PRIORITY_LIST
-            from keyboards import User_Keyboards, Owner_Keyboards
+            from keyboards import User_Keyboards, Owner_Keyboards, Specialist_keyboards
             prior_user = False
 
             async def prior_keyboard_send(key_type, row):
@@ -103,8 +107,10 @@ def user_registration_decorator(func):
                 row = PRIORITY_LIST[level]
                 
                 match level:
-                     case "OWNER":
+                    case "OWNER":
                         await prior_keyboard_send(key_type=Owner_Keyboards.owner_starting_keyboard.as_markup(), row=row)
+                    case "SPECIALIST":
+                        await prior_keyboard_send(key_type=Specialist_keyboards.questions_gen(), row=row)
                 
             if prior_user == False:
                 from main import db
@@ -131,3 +137,21 @@ def fio_handler(fio: str) -> str:
     fio = list(map(lambda x: x.capitalize(), fio.split(" ")))
     fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
     return fio
+
+async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
+    from main import db
+    questions_keyboard = InlineKeyboardBuilder()
+    rows = await db.get_specialits_questions(specialist_id=specialist_id)
+    for row in rows:
+        question_info = list(row.values())
+        for i in range(0, len(question_info), 3):
+            data = {'question': question_info[i + 1],
+                    'user_id': question_info[i + 2]}
+            # Переводим данные в json формат
+            serialized_data = json.dumps(data)
+            # Сохраняем в кэш память
+            await cache.set(question_info[i], serialized_data)
+            button = InlineKeyboardButton(text=f'Вопрос {question_info[i]}', callback_data=f'question:{question_info[i]}')
+            questions_keyboard.add(button)
+    questions_keyboard.adjust(3, repeat=True)
+    return questions_keyboard.as_markup()

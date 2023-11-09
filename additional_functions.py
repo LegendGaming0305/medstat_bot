@@ -5,6 +5,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup
 from typing import Union
 
+from db_actions import Database
+from states import User_states
+
+db = Database()
+
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
         r"""Функция save_to_txt принимает в себя:
@@ -29,19 +34,26 @@ def access_block_decorator(func):
     '''
     Как работает этот декоратор:
     1. Принимается декорируемая функция так, что в обертке определяются значения quarry_type и state
-    2. Далее идет проверка на текущий статус - если он равен Admin_states:registration_claim, то юзеру 
-    запрещен доступ к декорируемой функции
-    Это не будет работать на проверке статусов. Так как у каждого юзера уникален и ты не сможешь его поставить удаленно
-    определенный статус без взаимодействия юзера с ботом
+    2. Далее идет проверка на текущий статус
+    * Accept - Пользователю предоставляется доступ к функции
+    * Pending & Decline - Декоратор сдерживает пользователя от перехода к функции
     '''
+
     async def async_wrapper(quarry_type, state):
-        if await state.get_state() == "Admin_states:registration_claim":
-            await quarry_type.answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
-        elif await state.get_state() == "User_states:registration_accepted":
-            await quarry_type.answer(text="Вы успешно зашли")
-            return await func(quarry_type, state)
-        else:
-            return await func(quarry_type, state)
+        @quarry_definition_decorator
+        async def locker(**kwargs):
+            status = await db.get_status(user_id=kwargs["user_id"])
+
+            match status:
+                case 'Accept':
+                    await kwargs["answer_type"].answer(text="Успешный вход")
+                    return await func(quarry_type, state)
+                case 'Pending':
+                    await kwargs["answer_type"].answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
+                case 'Decline':
+                    await kwargs["answer_type"].answer(text="Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу")
+
+        return await locker(quarry_type, state)
     return async_wrapper 
 
 def quarry_definition_decorator(func):
@@ -111,7 +123,7 @@ def user_registration_decorator(func):
                 
             if prior_user == False:
                 from main import db
-                status = await db.get_certain_value(data_to_find="privilege_type", user_id=kwargs['user_id'])
+                status = await db.get_status(user_id=kwargs['user_id'])
                 if status is None or status == 'Decline':
                     await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())
                 elif status in ('Accept', 'Pending'):

@@ -65,5 +65,5 @@ async def process_question_input(message: types.Message, state: FSMContext) -> N
     '''
     data = await state.get_data()
     await db.process_question(user_id=message.from_user.id, question=message.text, form=data['tag'])
-    await message.answer('Ваш вопрос передан', reply_markup=User_Keyboards.main_menu().as_markup())
+    await message.answer('Ваш вопрос передан', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await state.clear()

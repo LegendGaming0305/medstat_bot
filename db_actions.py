@@ -104,11 +104,16 @@ class Database():
         if self.connection is None:
             await self.create_connection()
 
-        for level in PRIORITY_LIST.keys():
-            row = PRIORITY_LIST[level]
-            [await self.connection.execute('''INSERT INTO high_priority_users (user_id, user_fio, privilege_type) VALUES ($1, $2, $3)''',
-                                          row[string_num]["user_id"], row[string_num]["user_fio"], level) for string_num in range(len(row))]
+        check_higher_users = await self.connection.fetch('''SELECT * FROM high_priority_users''')
 
+        if check_higher_users: 
+            pass
+        else:
+            for level in PRIORITY_LIST.keys():
+                row = PRIORITY_LIST[level]
+                [await self.connection.execute('''INSERT INTO high_priority_users (user_id, user_fio, privilege_type) VALUES ($1, $2, $3)''',
+                                            row[string_num]["user_id"], row[string_num]["user_fio"], level) for string_num in range(len(row))]
+        
     async def after_registration_process(self, *args) -> None:
         '''
         Частичное заполнение данных в low_priority_users с ссылкой на registration_process_id
@@ -120,7 +125,12 @@ class Database():
             await self.create_connection()
 
         cursor = await self.connection.fetchrow('''SELECT id, user_fio, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
-        await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])
+        user_check = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE user_id = ($1)''', args[0])
+
+        if user_check:
+            await self.connection.execute('''UPDATE low_priority_users SET registration_process_id = ($1), registration_state = 'Pending' WHERE user_id = ($2)''', cursor[0], args[0])
+        else:
+            await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])
 
     async def get_unregistered(self) -> tuple:
         '''
@@ -156,7 +166,7 @@ class Database():
         await self.connection.execute('''UPDATE low_priority_users SET registration_state = ($1), process_regulator = ($2) WHERE id = ($3)''', 
                                       reg_status, inspector_id, string_id)
         
-    async def get_certain_value(self, data_to_find: str, user_id: int = None, form_id: int = None) -> str:
+    async def get_status(self, user_id: int = None, form_id: int = None) -> str:
         '''
         Получение данных пользователя по его заявке на регистрацию (reg. process) или же по его данным в low_priority таблице
         посредством user_id или form_id 
@@ -164,11 +174,8 @@ class Database():
         if self.connection is None:
             await self.create_connection()
 
-        user_info = await self.connection.fetchval('''SELECT ($1) FROM low_priority_users WHERE user_id = ($2)''', data_to_find, user_id) if user_id else await self.connection.fetchval('''SELECT (&1) FROM low_priority_users WHERE user_id = ($2)''', data_to_find, form_id)
-        form_info = await self.connection.fetchval('''SELECT ($1) FROM registration_process WHERE user_id = ($2)''', data_to_find, user_id) if user_id else await self.connection.fetchval('''SELECT (&1) FROM registration_process WHERE user_id = ($2)''', data_to_find, form_id)
-        
-        return form_info, user_info
-    
+        return await self.connection.fetchval('''SELECT registration_state FROM low_priority_users WHERE user_id = ($1)''', user_id) if user_id else await self.connection.fetchval('''SELECT registration_process_id FROM low_priority_users WHERE user_id = ($1)''', form_id)
+            
     async def process_question(self, user_id: int, question: str, form: str) -> None:
         '''
         Ввод вопроса по форме в БД

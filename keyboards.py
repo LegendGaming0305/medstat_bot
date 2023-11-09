@@ -49,7 +49,7 @@ class User_Keyboards():
         button_three = InlineKeyboardButton(text='• Ф. № 30 Шелепова Е.А.', callback_data='sec_three')
         button_four = InlineKeyboardButton(text='• Ф. № 14-ДС; Ф. 30 (в части работы СМП) Шляфер С.И.', callback_data='sec_four')
         button_five = InlineKeyboardButton(text='• Ф. № 47', callback_data='sec_five')
-        button_six = InlineKeyboardButton(text='• ф. № 8, 33, 2-ТБ, 7-ТБ, 8-ТБ, 10-ТБ (туберкулез);', callback_data='sec_six')
+        button_six = InlineKeyboardButton(text='• ф. № 8, 33, 2-ТБ, 7-ТБ, 8-ТБ, 10-ТБ (туберкулез)', callback_data='sec_six')
         button_seven = InlineKeyboardButton(text='• Ф. № 12, 12-село', callback_data='sec_seven')
         button_eight = InlineKeyboardButton(text='• Ф. № 14, 19, 41, 54, 16-ВН, 1-РБ, 1-Дети (здрав), 32, 232(вкладыш), 53, 70', callback_data='sec_eight')
         button_nine = InlineKeyboardButton(text='• Специализированные формы (№ 7, 9, 34; Ф. № 10, 36; Ф. № 36 -ПЛ; Ф. № 11, 37; Ф. № 13; Ф. № 15; Ф. № 55, 56; Ф. № 57; Ф. № 61; Ф. № 64 ; Ф. № 30 (в части работы Лабораторной службы)', callback_data='sec_nine')
@@ -72,10 +72,9 @@ class Owner_Keyboards():
 
         admin_panel = InlineKeyboardButton(text='Админ-панель', callback_data='admin_panel')
         tester_panel = InlineKeyboardButton(text='Тестер-панель', callback_data='tester_panel')
-        moder_panel = InlineKeyboardButton(text='Модер-панель', callback_data='moder_panel')
         user_panel = InlineKeyboardButton(text='Юзер-панель', callback_data='user_panel')
         specialist_panel = InlineKeyboardButton(text='Специалист-панель', callback_data='specialist_panel')
-        owner_starting_keyboard.add(admin_panel, tester_panel, moder_panel, user_panel, specialist_panel)
+        owner_starting_keyboard.add(admin_panel, tester_panel, user_panel, specialist_panel)
         return owner_starting_keyboard
     
     owner_starting_keyboard = main_menu().adjust(1, repeat=True)
@@ -139,6 +138,7 @@ class Admin_Keyboards():
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
+
     def questions_gen() -> InlineKeyboardBuilder:
         '''
         Создание кнопок вопросов для специалиста
@@ -156,8 +156,8 @@ class Specialist_keyboards():
         Создание кнопок для взаимодействия с вопросом
         '''
         question_keyboard = InlineKeyboardBuilder()
-        choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data='choose_question')
-        close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data='close_question')
+        choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data=f'choose_question')
+        close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data=f'close_question')
         question_keyboard.add(choose_button, close_button)
         question_keyboard.adjust(2)
         return question_keyboard.as_markup()

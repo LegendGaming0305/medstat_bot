@@ -37,6 +37,7 @@ class Database():
                                 CREATE TYPE STATE AS ENUM ('Decline', 'Accept', 'Pending');
                                 CREATE TYPE LOWER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER');
                                 CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER', 'ADMIN', 'SPECIALIST');
+                                CREATE TYPE CHAT_TYPE AS ENUM ('Personal', 'Group', 'Section');
                             EXCEPTION
                                 WHEN duplicate_object THEN null;
                             END $$;''')
@@ -68,17 +69,27 @@ class Database():
                                       id SERIAL PRIMARY KEY,
                                       form_name VARCHAR(250),
                                       form_tag VARCHAR(10),
-                                      specialist SMALLINT CHECK (specialist > 0) NOT NULL,
-                                      FOREIGN KEy (specialist) REFERENCES high_priority_users (id))''')
-        await self.connection.execute('''CREATE TABLE IF NOT EXISTS questions_about_forms(
+                                      specialist SMALLINT CHECK (specialist > 0) DEFAULT NULL,
+                                      FOREIGN KEY (specialist) REFERENCES high_priority_users (id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS questions_forms(
                                       id SERIAL PRIMARY KEY,
-                                      user_id BIGINT CHECK (user_id > 0) NOT NULL,
-                                      question TEXT,
-                                      question_form SMALLINT CHECK (question_form > 0) NOT NULL,
-                                      specialist_id BIGINT CHECK (specialist_id > 0),
-                                      answer TEXT,
+                                      lp_user_id INTEGER CHECK (lp_user_id > 0) NOT NULL,
+                                      FOREIGN KEY (lp_user_id) REFERENCES low_priority_users (id),
+                                      section_form SMALLINT CHECK (section_form > 0) NOT NULL,
+                                      FOREIGN KEY (section_form) REFERENCES form_types (id),
+                                      question_content TEXT,
+                                      question_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      question_chat_type CHAT_TYPE DEFAULT 'Personal',
+                                      question_state STATE DEFAULT 'Pending')''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS answer_process(
+                                      id SERIAL PRIMARY KEY,
+                                      question_id INTEGER CHECK (question_id > 0) NOT NULL,
+                                      FOREIGN KEY (question_id) REFERENCES questions_forms (id),
+                                      answer_content TEXT,
                                       answer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                      FOREIGN KEY (question_form) REFERENCES form_types (id))''')
+                                      answer_chat_type CHAT_TYPE DEFAULT 'Personal',
+                                      specialist_id BIGINT CHECK (specialist_id > 0) NOT NULL,
+                                      FOREIGN KEY (specialist_id) REFERENCES high_priority_users (id))''')
 
 
     async def add_registration_form(self, *args) -> None:
@@ -154,12 +165,23 @@ class Database():
         '''
         if self.connection is None:
             await self.create_connection()
-        
+
         form_info = await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id) if form_id else await self.connection.fetchrow('''SELECT * FROM registration_process WHERE user_id = ($1)''', user_id)
         user_info = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE registration_process_id = ($1)''', form_id) if form_id else await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE user_id = ($1)''', user_id)
 
         return form_info, user_info
     
+    async def get_lp_user_info(self, lp_user_id: int = None):
+        
+        if self.connection is None:
+            await self.create_connection()
+        
+        form_id = await self.connection.fetchrow('''SELECT registration_process_id FROM low_priority_users WHERE id = ($1)''', lp_user_id)
+        form_information = await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id[0])
+        lp_user_information = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE id = ($1)''', lp_user_id)
+        
+        return form_information, lp_user_information
+
     async def update_registration_status(self, string_id, admin_id, reg_status) -> None:
         string_id = int(string_id)
         if self.connection is None:
@@ -178,38 +200,55 @@ class Database():
             await self.create_connection()
 
         return await self.connection.fetchval('''SELECT registration_state FROM low_priority_users WHERE user_id = ($1)''', user_id) if user_id else await self.connection.fetchval('''SELECT registration_process_id FROM low_priority_users WHERE user_id = ($1)''', form_id)
-            
+
+    async def get_lp_user_id(self, user_id: int = None) -> str:
+
+        if self.connection is None:
+            await self.create_connection()
+
+        return await self.connection.fetchval('''SELECT id FROM low_priority_users WHERE user_id = ($1)''', user_id)
+
     async def process_question(self, user_id: int, question: str, form: str) -> None:
         '''
         Ввод вопроса по форме в БД
         '''
         if self.connection is None:
             await self.create_connection()
-        form_id = await self.connection.fetchval('''SELECT id FROM form_types WHERE form_tag = $1''', form)
-        await self.connection.execute('''INSERT INTO questions_about_forms (user_id, question, question_form)
-                                      VALUES ($1, $2, $3)''', user_id, question, form_id)
+        form_id = await self.connection.fetchval('''SELECT id FROM form_types WHERE form_tag = $1''', form) 
+        await self.connection.execute('''INSERT INTO questions_forms (lp_user_id, section_form, question_content)
+                                      VALUES ($1, $2, $3)''', await Database().get_lp_user_id(user_id=user_id), form_id, question)
     
     async def get_specialits_questions(self, specialist_id: int) -> list:
         if self.connection is None:
             await self.create_connection()
+
         form_id = await self.connection.fetchval('''SELECT ft.id
                                                  FROM form_types ft
                                                  JOIN high_priority_users hp ON ft.specialist = hp.id
                                                  WHERE hp.user_id = $1''', specialist_id)
-        result = await self.connection.fetch('''SELECT id, question, user_id FROM questions_about_forms WHERE question_form = $1 AND answer IS NULL''',
-                                             form_id)
+        result = await self.connection.fetch('''SELECT id, question_content, lp_user_id FROM questions_forms WHERE section_form = $1 AND question_state = 'Pending';''', form_id)
         return result
     
-    async def update_question(self, question_id: int, answer: str, specialist_id: int) -> None:
+    async def answer_process_report(self, question_id: int, answer: str, specialist_id: int) -> None:
         if self.connection is None:
             await self.create_connection()
-        await self.connection.execute('''UPDATE questions_about_forms SET answer = $1,
-                                      specialist_id = $2,
-                                      answer_date = CURRENT_TIMESTAMP
-                                      WHERE id = $3''', answer, specialist_id, question_id)
-        
+
+        specialist_id = await self.connection.fetchval('''SELECT id FROM high_priority_users WHERE user_id = ($1)''', specialist_id)
+
+        if answer == "Закрытие вопроса":
+            await self.connection.execute('''UPDATE questions_forms SET question_state = 'Decline' WHERE id = ($1)''', question_id)
+            await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id)
+        else:
+            await self.connection.execute('''UPDATE questions_forms SET question_state = 'Accept' WHERE id = ($1)''', question_id)
+            await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id)
+
     async def check_question(self, question_id: int) -> str:
         if self.connection is None:
             await self.create_connection()
-        result = await self.connection.fetchval('''SELECT answer FROM questions_about_forms WHERE id = $1''', question_id)
+        result = await self.connection.fetchval('''SELECT answer_content FROM answer_process WHERE question_id = $1''', question_id)
         return result
+    
+    async def get_question_form(self, lp_user_id: int):
+        if self.connection is None:
+            await self.create_connection()
+        return await self.connection.fetchrow('''SELECT * FROM questions_forms WHERE lp_user_id = ($1)''', lp_user_id)

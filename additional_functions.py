@@ -8,7 +8,6 @@ from aiogram.types import InlineKeyboardMarkup
 from typing import Union
 
 from db_actions import Database
-from states import User_states
 
 db = Database()
 
@@ -153,14 +152,14 @@ def fio_handler(fio: str) -> str:
     return fio
 
 async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
-    from main import db
+    # from main import db
     questions_keyboard = InlineKeyboardBuilder()
     rows = await db.get_specialits_questions(specialist_id=specialist_id)
     for row in rows:
         question_info = list(row.values())
         for i in range(0, len(question_info), 3):
             data = {'question': question_info[i + 1],
-                    'user_id': question_info[i + 2]}
+                    'lp_user_id': question_info[i + 2]}
             # Переводим данные в json формат
             serialized_data = json.dumps(data)
             # Сохраняем в кэш память

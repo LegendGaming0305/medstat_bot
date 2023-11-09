@@ -22,11 +22,16 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         result = ''
         for key, value in information.items():
             await state.update_data(question=value)
-            if key == 'user_id':
+            if key == 'lp_user_id':
                 continue
             result += f'{key}: {value}'
 
-        await state.update_data(question_id=callback_data, user_id=information['user_id'])
+        lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
+        user_name = lp_user_info[0][3] 
+        result += f'\nuser_name: {user_name}'
+        # question_form_info = await db.get_question_form(lp_user_id=information['lp_user_id'])
+        # question_id = question_form_info[0]
+        await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
         await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
     elif callback.data == 'choose_question':
         markup = InlineKeyboardBuilder()
@@ -36,16 +41,15 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         if result_check == 'Вопрос взят':
             await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
         else:
-            await db.update_question(question_id=int(question_id),
+            await db.answer_process_report(question_id=int(question_id),
                                      answer='Вопрос взят',
                                      specialist_id=callback.from_user.id)
             await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
             await callback.message.answer('Введите свой вопрос')
             await state.set_state(Specialist_states.answer_question)
-
     elif callback.data == 'close_question':
         data = await state.get_data()
-        await db.update_question(question_id=int(data['question_id']),
+        await db.answer_process_report(question_id=int(data['question_id']),
                                  answer='Закрытие вопроса',
                                  specialist_id=callback.from_user.id)
         await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
@@ -55,7 +59,6 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
     '''
     Обработка запросов от inline-кнопок форм
     '''
-
     await state.update_data(tag=callback.data)
     await callback.message.edit_text('Введите Ваш вопрос')
     await state.set_state(User_states.question_process)
@@ -101,7 +104,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     '''
     @access_block_decorator
     async def getting_started(callback: types.CallbackQuery, state: FSMContext, *args):
-        await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму', reply_markup=User_Keyboards.main_menu(True).as_markup())
+        await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму', reply_markup=User_Keyboards.section_chose().as_markup())
         await state.set_state(User_states.form_choosing)
 
     if callback.data == 'npa':
@@ -120,8 +123,8 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'admin_panel':
         await callback.message.edit_text(text="Добро пожаловать в Админ-панель", reply_markup=Admin_Keyboards.main_menu())
         await state.set_state(Admin_states.registration_process)
-    elif callback.data == 'moder_panel':
-        pass
+    elif callback.data == 'specialist_panel':
+        await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.questions_gen())
     elif callback.data == 'user_panel':
         pass
     elif callback.data == 'answer_the_question':

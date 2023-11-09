@@ -1,14 +1,54 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+import json
 
-from keyboards import Admin_Keyboards, User_Keyboards
+from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
-from states import Admin_states, User_states
-from additional_functions import access_block_decorator
+from states import Admin_states, Specialist_states, User_states
+from additional_functions import access_block_decorator, create_inline_keyboard
 
 db = Database()
 router = Router()
+
+@router.callback_query(Specialist_states.choosing_question)
+async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
+    if 'question:' in callback.data:
+        callback_data = callback.data.split(':')[-1]
+        from additional_functions import cache
+        data = await cache.get(int(callback_data))
+        information = json.loads(data)
+        result = ''
+        for key, value in information.items():
+            await state.update_data(question=value)
+            if key == 'user_id':
+                continue
+            result += f'{key}: {value}'
+
+        await state.update_data(question_id=callback_data, user_id=information['user_id'])
+        await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
+    elif callback.data == 'choose_question':
+        markup = InlineKeyboardBuilder()
+        data = await state.get_data()
+        question_id = data['question_id']
+        result_check = db.check_question(question_id=question_id)
+        if result_check == 'Вопрос взят':
+            await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
+        else:
+            await db.update_question(question_id=int(question_id),
+                                     answer='Вопрос взят',
+                                     specialist_id=callback.from_user.id)
+            await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
+            await callback.message.answer('Введите свой вопрос')
+            await state.set_state(Specialist_states.answer_question)
+
+    elif callback.data == 'close_question':
+        data = await state.get_data()
+        await db.update_question(question_id=int(data['question_id']),
+                                 answer='Закрытие вопроса',
+                                 specialist_id=callback.from_user.id)
+        await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
 
 @router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -84,3 +124,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         pass
     elif callback.data == 'user_panel':
         pass
+    elif callback.data == 'answer_the_question':
+        keyboard = await create_inline_keyboard(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
+        await state.set_state(Specialist_states.choosing_question)

@@ -74,7 +74,8 @@ class Owner_Keyboards():
         tester_panel = InlineKeyboardButton(text='Тестер-панель', callback_data='tester_panel')
         moder_panel = InlineKeyboardButton(text='Модер-панель', callback_data='moder_panel')
         user_panel = InlineKeyboardButton(text='Юзер-панель', callback_data='user_panel')
-        owner_starting_keyboard.add(admin_panel, tester_panel, moder_panel, user_panel)
+        specialist_panel = InlineKeyboardButton(text='Специалист-панель', callback_data='specialist_panel')
+        owner_starting_keyboard.add(admin_panel, tester_panel, moder_panel, user_panel, specialist_panel)
         return owner_starting_keyboard
     
     owner_starting_keyboard = main_menu().adjust(1, repeat=True)
@@ -136,3 +137,29 @@ class Admin_Keyboards():
 
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
+# -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
+class Specialist_keyboards():
+    def questions_gen() -> InlineKeyboardBuilder:
+        '''
+        Создание кнопок вопросов для специалиста
+        '''
+        specialist_starting_keyboard = InlineKeyboardBuilder()
+
+        answer_the_question = InlineKeyboardButton(text='Ответить на вопрос', callback_data='answer_the_question')
+
+        specialist_starting_keyboard.add(answer_the_question)
+        specialist_starting_keyboard.adjust(1)
+        return specialist_starting_keyboard.as_markup()
+    
+    def question_buttons() -> InlineKeyboardBuilder:
+        '''
+        Создание кнопок для взаимодействия с вопросом
+        '''
+        question_keyboard = InlineKeyboardBuilder()
+        choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data='choose_question')
+        close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data='close_question')
+        question_keyboard.add(choose_button, close_button)
+        question_keyboard.adjust(2)
+        return question_keyboard.as_markup()
+
+# -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

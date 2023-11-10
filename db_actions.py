@@ -79,7 +79,7 @@ class Database():
                                       FOREIGN KEY (section_form) REFERENCES form_types (id),
                                       question_content TEXT,
                                       question_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                      question_chat_type CHAT_TYPE DEFAULT 'Personal',
+                                      question_chat_type VARCHAR(20) DEFAULT 'Personal',
                                       question_state STATE DEFAULT 'Pending')''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS answer_process(
                                       id SERIAL PRIMARY KEY,
@@ -87,7 +87,7 @@ class Database():
                                       FOREIGN KEY (question_id) REFERENCES questions_forms (id),
                                       answer_content TEXT,
                                       answer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                      answer_chat_type CHAT_TYPE DEFAULT 'Personal',
+                                      answer_chat_type VARCHAR(20) DEFAULT 'Personal',
                                       specialist_id BIGINT CHECK (specialist_id > 0) NOT NULL,
                                       FOREIGN KEY (specialist_id) REFERENCES high_priority_users (id))''')
 
@@ -125,7 +125,13 @@ class Database():
         else:
             for level in PRIORITY_LIST.keys():
                 row = PRIORITY_LIST[level]
-                [await self.connection.execute('''INSERT INTO high_priority_users (user_id, user_fio, privilege_type) VALUES ($1, $2, $3)''',
+                [await self.connection.execute('''INSERT INTO high_priority_users (user_id, user_fio, privilege_type)
+                                                SELECT $1, $2, $3
+                                                WHERE NOT EXISTS (
+                                                    SELECT 1
+                                                    FROM high_priority_users
+                                                    WHERE user_id = $1
+                                                )''',
                                             row[string_num]["user_id"], row[string_num]["user_fio"], level) for string_num in range(len(row))]
         
     async def after_registration_process(self, *args) -> None:

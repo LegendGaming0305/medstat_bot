@@ -5,26 +5,27 @@ from asyncpg.exceptions import DuplicateDatabaseError
 class Database():
     def __init__(self):
         self.connection = None
-        self.create_database()
+        # self.create_database()
         self.create_connection()
         self.create_table()
 
-    async def create_database(self) -> None:
-        '''
-        Создание БД если ее не существует еще
-        '''
-        conn = await asyncpg.connect(database='template1', user='postgres')
-        try:
-            await conn.execute('CREATE DATABASE telegram OWNER postgres')
-        except DuplicateDatabaseError:
-            pass
-        await conn.close()
+    # async def create_database(self) -> None:
+    #     '''
+    #     Создание БД если ее не существует еще
+    #     '''
+    #     conn = await asyncpg.connect(database='template1', user='postgres', password='!qwe@123#')
+    #     try:
+    #         await conn.execute('CREATE DATABASE telegram OWNER postgres')
+    #     except DuplicateDatabaseError:
+    #         pass
+    #     await conn.close()
 
     async def create_connection(self) -> None:
         '''
         Создание подключения к БД PostrgeSQL
         '''
-        self.connection = await asyncpg.connect('postgresql://postgres@localhost/telegram')
+        self.connection = await asyncpg.connect(database='telegram', user='postgres', password='',
+                                                host='localhost')
 
     async def create_table(self) -> None:
         '''
@@ -90,6 +91,30 @@ class Database():
                                       answer_chat_type VARCHAR(20) DEFAULT 'Personal',
                                       specialist_id BIGINT CHECK (specialist_id > 0) NOT NULL,
                                       FOREIGN KEY (specialist_id) REFERENCES high_priority_users (id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS miacs (
+                                        id SERIAL PRIMARY KEY,
+                                        miac_name VARCHAR(100),
+                                        miac_adress VARCHAR(250),
+                                        telephone_number VARCHAR(25),
+                                        email VARCHAR(50) UNIQUE,
+                                        site VARCHAR(200),
+                                        miac_tag VARCHAR(20))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS regions (
+                                        id SERIAL PRIMARY KEY,
+                                        region_name VARCHAR(50),
+                                        region_tag VARCHAR(20),
+                                        miac_id SMALLINT NOT NULL,
+                                        FOREIGN KEY (miac_id) REFERENCES miacs (id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS federal_district (
+                                        id SERIAL PRIMARY KEY,
+                                        federal_name VARCHAR(45),
+                                        district_tag VARCHAR(30))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS federal_district_regions (
+                                        federal_district_id INT,
+                                        region_id INT,
+                                        FOREIGN KEY (federal_district_id) REFERENCES federal_district (id),
+                                        FOREIGN KEY (region_id) REFERENCES regions (id),
+                                        PRIMARY KEY (federal_district_id, region_id))''')
 
 
     async def add_registration_form(self, *args) -> None:
@@ -258,3 +283,23 @@ class Database():
         if self.connection is None:
             await self.create_connection()
         return await self.connection.fetchrow('''SELECT * FROM questions_forms WHERE lp_user_id = ($1)''', lp_user_id)
+    
+    async def get_miac_information(self, info_type: str, district_id: int = None, miac_id: int = None):
+        '''
+        Получение информации для создания inline кнопок
+        '''
+        if self.connection is None:
+            await self.create_connection()
+        if info_type == 'federal_district':
+            districts = await self.connection.fetch('''SELECT federal_name, district_tag FROM federal_district''')
+            return districts
+        elif info_type == 'region':
+            regions = await self.connection.fetch('''SELECT regions.region_name, regions.region_tag
+                                                  FROM regions
+                                                  JOIN federal_district_regions ON regions.id = federal_district_regions.region_id
+                                                  WHERE federal_district_regions.federal_district_id = $1''', district_id)
+            return regions
+        elif info_type == 'miac':
+            miac = await self.connection.fetchval('''SELECT miac_name FROM miacs
+                                                  WHERE id = $1''', miac_id)
+            return miac

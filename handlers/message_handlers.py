@@ -19,15 +19,6 @@ async def process_start(message: types.Message, state: FSMContext) -> None:
     '''
     await state.clear()
 
-@router.message(User_states.registration)
-async def process_subject_input(message: types.Message, state: FSMContext) -> None:
-    '''
-    Получение наименования субъекта МИАЦ
-    '''
-    await state.update_data(subject=message.text)
-    await message.answer('Введите Ваше ФИО строго через пробел')
-    await state.set_state(User_states.reg_fio)
-
 @router.message(User_states.reg_fio)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     '''

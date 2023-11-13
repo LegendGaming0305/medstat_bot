@@ -12,8 +12,28 @@ from additional_functions import access_block_decorator, create_inline_keyboard
 db = Database()
 router = Router()
 
+
+@router.callback_query(F.data.contains('district') | F.data.contains('region'))
+async def process_miac_selection(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+    Модуль с выбором МИАЦ
+    '''
+    if callback.data.startswith('district'):
+        district_id = callback.data.split('_')[-1]
+        regions_keyboard = await User_Keyboards.create_regions_buttons(district_id=int(district_id))
+        await callback.message.edit_text('Выберите регион/область', reply_markup=regions_keyboard)
+    elif callback.data.startswith('region'):
+        region_id = callback.data.split('_')[-1]
+        miac_name = await db.get_miac_information(info_type='miac', miac_id=int(region_id))
+        await state.set_state(User_states.reg_fio)
+        await state.update_data(subject=miac_name)
+        await callback.message.edit_text('Введите ваше ФИО строго через пробел')
+
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+    Выбор вопроса специалистом
+    '''
     if 'question:' in callback.data:
         callback_data = callback.data.split(':')[-1]
         from additional_functions import cache
@@ -116,8 +136,9 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'method_recommendations':
         await callback.message.edit_text('Методические рекомендации')
     elif callback.data == 'registration':
-        await state.set_state(User_states.registration)
-        await callback.message.edit_text('Введите наименование вашего МИАЦ')
+        await state.set_state(User_states.reg_fio)
+        markup = await User_Keyboards.create_district_buttons()
+        await callback.message.edit_text('Выберите Федеральный округ', reply_markup=markup)
     elif callback.data == "make_question":
         await getting_started(callback, state)
     elif callback.data == 'admin_panel':

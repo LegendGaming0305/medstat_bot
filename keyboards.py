@@ -61,6 +61,35 @@ class User_Keyboards():
         
         return section_key.adjust(1, repeat=True)
 
+    async def create_district_buttons() -> InlineKeyboardBuilder:
+        '''
+        Создание клавиатуры для выбора Федерального округа
+        '''
+        district_keyboard = InlineKeyboardBuilder()
+        from main import db
+        result = await db.get_miac_information(info_type='federal_district')
+        for record in result:
+            federal_name = record['federal_name']
+            district_tag = record['district_tag']
+            button = InlineKeyboardButton(text=federal_name, callback_data=district_tag)
+            district_keyboard.add(button)
+
+        district_keyboard.adjust(1, repeat=True)
+        return district_keyboard.as_markup()
+    
+    async def create_regions_buttons(district_id: int) -> InlineKeyboardBuilder:
+        region_keyboard = InlineKeyboardBuilder()
+        from main import db
+        result = await db.get_miac_information(info_type='region', district_id=district_id)
+        for record in result:
+            region_name = record['region_name']
+            region_tag = record['region_tag']
+            button = InlineKeyboardButton(text=region_name, callback_data=region_tag)
+            region_keyboard.add(button)
+
+        region_keyboard.adjust(1, repeat=True)
+        return region_keyboard.as_markup()
+
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------O-W-N-E-R-P-A-N-E-L----------------------------------------------

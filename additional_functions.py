@@ -4,8 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
 from functools import wraps
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardMarkup
-from typing import Union
+from fuzzywuzzy import fuzz
 
 from db_actions import Database
 
@@ -147,9 +146,12 @@ def fio_handler(fio: str) -> str:
     '''
         Обратка фио для придания ему вида: И.И.Иванов
     '''
-    fio = list(map(lambda x: x.capitalize(), fio.split(" ")))
-    fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
-    return fio
+    try:
+        fio = list(map(lambda x: x.capitalize(), fio.split(" ")))
+        fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
+        return fio
+    except IndexError:
+        return "Некорректное имя"
 
 async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
     # from main import db
@@ -168,3 +170,58 @@ async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
             questions_keyboard.add(button)
     questions_keyboard.adjust(3, repeat=True)
     return questions_keyboard.as_markup()
+
+def fuzzy_handler(pattern: list, user_question: str):
+
+    def extract_filtered(dictionary: dict, similarity_values: list) -> dict:
+        clean_dictionary = dict()
+        result = list(filter(lambda x: x >= 50, similarity_values))
+
+        if result == []:
+            return None, None
+        else:
+            while result != []:
+                popped_element = result.pop()
+                try:
+                    data_for_update = list(filter(lambda x: popped_element in x[1], dictionary.items()))
+                except IndexError:
+                    return None, None
+                clean_dictionary.update([(data_for_update[0][0], data_for_update[0][1])])
+
+        maximum_values = list(filter(lambda x: max(similarity_values) == x[1][0], clean_dictionary.items()))
+
+        return clean_dictionary, maximum_values
+
+    text_orig = pattern.copy() ; text_orig = list(map(lambda x: x.lower(), text_orig))
+    user_question = user_question.lower().strip()
+    current_similarity_rate = 0
+    dict_container = dict()
+
+    for number, phrase in enumerate(text_orig):
+        if('вопрос:' in phrase):
+            pattern_question = phrase.replace('вопрос:','', 1)
+            current_similarity_rate = (fuzz.token_sort_ratio(pattern_question, user_question))
+            dict_container.update([(number, (current_similarity_rate, pattern_question))])
+
+    similarity_rate_list = sorted(list({value[0] for value in dict_container.values()}))
+    filtered_dictionary, maximum_values = extract_filtered(dictionary=dict_container, similarity_values=similarity_rate_list)
+    
+    if filtered_dictionary == None:
+        return None, None
+    else:
+        pattern_answers = ''
+        for value in maximum_values:
+            for number, phrase in enumerate(text_orig[value[0] + 1:]):
+                
+                if 'вопрос:' in phrase:
+                    break
+                else:
+                    pattern_answers = pattern_answers + f"{phrase}"
+                    
+        pattern_questions = list(filtered_dictionary.values())
+        return pattern_answers, pattern_questions
+
+def file_reader(file_path: str):
+    with open(file=file_path, mode='r', buffering=-1, encoding="utf-8") as file:
+        pattern_text = file.readlines()
+        return pattern_text

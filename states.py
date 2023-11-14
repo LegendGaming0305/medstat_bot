@@ -8,6 +8,7 @@ class User_states(StatesGroup):
     registration_accepted = State()
     form_choosing = State()
     question_process = State()
+    fuzzy_process = State()
 
 class Admin_states(StatesGroup):
     registration_claim = State()

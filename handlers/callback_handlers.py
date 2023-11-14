@@ -81,7 +81,7 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
     '''
     await state.update_data(tag=callback.data)
     await callback.message.edit_text('Введите Ваш вопрос')
-    await state.set_state(User_states.question_process)
+    await state.set_state(User_states.fuzzy_process)
 
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:

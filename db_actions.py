@@ -129,9 +129,11 @@ class Database():
         if self.connection is None:
             await self.create_connection()
         
+        test_subj = "Test"
+
         await self.connection.execute('''INSERT INTO registration_process 
                                            (user_id, subject_name, user_fio, post_name, telephone_number)
-                                           VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
+                                           VALUES ($1, $2, $3, $4, $5)''', args[0], test_subj, args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
 
     async def add_higher_users(self) -> None:
         from non_script_files.config import PRIORITY_LIST

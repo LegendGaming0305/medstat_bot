@@ -1,8 +1,9 @@
-from additional_functions import user_registration_decorator
-from states import User_states, Admin_states, Specialist_states
+from additional_functions import user_registration_decorator, fuzzy_handler
+from states import User_states, Specialist_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
 from cache_container import cache
+from non_script_files.config import QUESTION_PATTERN
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
@@ -48,6 +49,15 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.clear()
+
+@router.message(User_states.fuzzy_process)
+async def process_question_input(message: types.Message, state: FSMContext) -> None:
+    '''
+    Обработка вопроса через fuzzy_handler
+    '''
+    data = await state.get_data()
+    await db.process_question(user_id=message.from_user.id, question=message.text, form=data['tag'])
+    bot_answer, bot_questions = fuzzy_handler(pattern=QUESTION_PATTERN, user_question=message.text)
 
 @router.message(User_states.question_process)
 async def process_question_input(message: types.Message, state: FSMContext) -> None:

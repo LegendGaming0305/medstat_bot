@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 from db_actions import Database
 from additional_functions import fio_handler
@@ -41,6 +41,12 @@ class User_Keyboards():
         
         return user_starting_keyboard.adjust(1, repeat=True)
     
+    def back_to_main_menu() -> InlineKeyboardBuilder:
+        main_menu_back = InlineKeyboardBuilder()
+        back_button = InlineKeyboardButton(text='Вернуться в главное меню', callback_data='main_menu')
+        main_menu_back.add(back_button)
+        return main_menu_back.adjust(1, repeat=True)
+
     def section_chose() -> InlineKeyboardBuilder:
         section_key = InlineKeyboardBuilder()
 
@@ -89,7 +95,30 @@ class User_Keyboards():
 
         region_keyboard.adjust(1, repeat=True)
         return region_keyboard.as_markup()
+    
+    def fuzzy_buttons_generate(questions) -> InlineKeyboardBuilder:
+        text_pattern = []
+        fuzzy_keyboard = InlineKeyboardBuilder()
+        buttons_data = [InlineKeyboardButton(text=f"Вопрос №{num + 1}", callback_data=f"fuzzy_buttons&simular_rate:{value[1][0]}&index:{value[0]}") for num, value in enumerate(questions)]
+        [text_pattern.append(f"Вопрос №{num + 1}: {value[1][1]}\n") for num, value in enumerate(questions)]
+        text_pattern = "".join(text_pattern)
+        fuzzy_keyboard.add(*[elem for elem in buttons_data])
+        fuzzy_keyboard.adjust(3, repeat=True)
+        return fuzzy_keyboard, text_pattern
 
+    def back_to_fuzzy_questions() -> InlineKeyboardBuilder:
+        back_to_pool = InlineKeyboardBuilder()
+        back_to_pool.add(InlineKeyboardButton(text="Назад к списку вопросов", callback_data="back_to_fuzzy"))
+        back_to_pool.adjust(1, repeat=True)
+        return back_to_pool
+
+    def out_of_fuzzy_questions() -> ReplyKeyboardMarkup:
+        
+        kb = [[KeyboardButton(text="Возврат в главное меню")],
+              [KeyboardButton(text="Не нашёл подходящего вопроса")]]
+        out_of_pool = ReplyKeyboardMarkup(keyboard=kb,
+                                        resize_keyboard=True)
+        return out_of_pool
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------O-W-N-E-R-P-A-N-E-L----------------------------------------------
@@ -148,8 +177,6 @@ class Admin_Keyboards():
             Может быть аргументом reply_markup
         '''
         unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
-        # reg_forms stands for registration_process (id, user_id, subject, name, post, phone, date)
-        # unique_keys stands for (reg_process_id)
         generated_keyboard = InlineKeyboardBuilder()
         buttons_data = [InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))]
         generated_keyboard.add(*[elem for elem in buttons_data])
@@ -160,9 +187,6 @@ class Admin_Keyboards():
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
-
-
-
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

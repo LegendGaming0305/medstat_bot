@@ -1,14 +1,14 @@
-from additional_functions import user_registration_decorator, fuzzy_handler
+from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect
 from states import User_states, Specialist_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
-from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
 import json
+from aiogram.types import ReplyKeyboardRemove
 
 router = Router()
 
@@ -50,24 +50,45 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.clear()
 
+@router.message(F.text.contains('Возврат') | F.text.contains('Не нашёл'))
+async def exiting_fuzzy(message: types.Message, state: FSMContext):
+    if "Возврат в главное меню" in message.text:
+        @user_registration_decorator
+        async def process_start(message: types.Message, state: FSMContext) -> None:
+            '''
+            Выдаем пользователю определенный набор кнопок от его статуса
+            '''
+            await message.reply("Успешный возврат меню...", reply_markup=ReplyKeyboardRemove())
+            await state.clear()
+        await process_start(message, state)
+    elif "Не нашёл подходящего вопроса" in message.text:
+        await question_redirect(message, state)
+
 @router.message(User_states.fuzzy_process)
 async def process_question_input(message: types.Message, state: FSMContext) -> None:
+    from cache_container import cache
     '''
     Обработка вопроса через fuzzy_handler
     '''
-    data = await state.get_data()
-    await db.process_question(user_id=message.from_user.id, question=message.text, form=data['tag'])
-    bot_answer, bot_questions = fuzzy_handler(pattern=QUESTION_PATTERN, user_question=message.text)
+    await state.update_data(user_question=message.text)
+    bot_answer, bot_questions = fuzzy_handler(user_question=message.text, pattern=QUESTION_PATTERN)
+    serialized_questions = json.dumps(bot_questions)
+    await cache.set(f"questions_pool:{message.from_user.id}", serialized_questions)
 
-@router.message(User_states.question_process)
-async def process_question_input(message: types.Message, state: FSMContext) -> None:
-    '''
-    Передача вопроса в бд
-    '''
-    data = await state.get_data()
-    await db.process_question(user_id=message.from_user.id, question=message.text, form=data['tag'])
-    await message.answer('Ваш вопрос передан', reply_markup=User_Keyboards.main_menu(True).as_markup())
-    await state.clear()
+    try:
+        maximum_simularity = [True for var in bot_questions if var[1][0] >= 85]
+    except TypeError:
+        maximum_simularity = [False]
+
+    if bot_questions == None:
+        await question_redirect(message, state)
+    elif True in maximum_simularity:
+            await message.reply(text=bot_answer, reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+            await state.clear()
+    else:
+        keyboard, text = User_Keyboards.fuzzy_buttons_generate(bot_questions)
+        await message.answer(text=f"Возможно вы имели в виду:\n{text}", reply_to_message_id=message.message_id, reply_markup=keyboard.as_markup())
+        await message.answer(text=f"""Выберете из представленных выше вопросов наиболее схожий с вашим.\nВ случае, если вы не удовлетворены предложенными вариантами, нажмите 'Не нашёл подходящего вопроса'.""", reply_markup=User_Keyboards.out_of_fuzzy_questions())
 
 @router.message(Specialist_states.answer_question)
 async def process_answer(message: types.Message, state: FSMContext):

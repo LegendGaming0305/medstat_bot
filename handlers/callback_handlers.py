@@ -7,7 +7,9 @@ import json
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_inline_keyboard
+from additional_functions import access_block_decorator, create_inline_keyboard, fuzzy_handler
+from cache_container import cache
+from non_script_files.config import QUESTION_PATTERN
 
 db = Database()
 router = Router()
@@ -28,6 +30,25 @@ async def process_miac_selection(callback: types.CallbackQuery, state: FSMContex
         await state.set_state(User_states.reg_fio)
         await state.update_data(subject=miac_name)
         await callback.message.edit_text('Введите ваше ФИО строго через пробел')
+
+@router.callback_query(User_states.fuzzy_process)
+async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
+    callback_data = callback.data
+    
+    data = await cache.get(f"questions_pool:{callback.from_user.id}")
+    information = json.loads(data)
+
+    if "fuzzy_buttons" in callback_data:
+        callback_data = callback_data.split("&") ; callback_data = callback_data[2] ; callback_data = callback_data.split(":") 
+        value_id = int(callback_data[1])
+        current_question = list(filter(lambda x: value_id == x[0], information))
+        current_question = current_question[0][1][1]
+        bot_answer, bot_questions = fuzzy_handler(user_question=current_question, pattern=QUESTION_PATTERN)
+        await callback.message.edit_text(text=f"Вопрос: {current_question}\nОтвет: {bot_answer}", reply_markup=User_Keyboards.back_to_fuzzy_questions().as_markup())
+
+    elif callback_data == "back_to_fuzzy":
+        keyboard, text = User_Keyboards.fuzzy_buttons_generate(information)
+        await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
 
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -129,6 +150,8 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
 
     if callback.data == 'npa':
         await callback.message.edit_text('НПА')
+    elif callback.data == 'main_menu':
+        await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     elif callback.data == 'medstat':
         await callback.message.edit_text('Медстат')
     elif callback.data == 'statistic':

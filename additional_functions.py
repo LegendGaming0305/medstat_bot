@@ -1,10 +1,13 @@
-from aiogram import types
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
 from functools import wraps
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fuzzywuzzy import fuzz
+from aiogram.fsm.context import FSMContext
+from aiogram import types
+from aiogram import Bot
+from aiogram.enums import ParseMode
 
 from db_actions import Database
 
@@ -48,7 +51,7 @@ def access_block_decorator(func):
 
             match status:
                 case 'Accept':
-                    await kwargs["answer_type"].answer(text="Успешный вход")
+                    # await kwargs["answer_type"].answer(text="Успешный вход")
                     return await func(quarry_type, state)
                 case 'Pending':
                     await kwargs["answer_type"].answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
@@ -105,7 +108,7 @@ def user_registration_decorator(func):
     async def async_wrapper(query_type, state):
         @quarry_definition_decorator
         async def registration(**kwargs):
-            from non_script_files.config import PRIORITY_LIST
+            from non_script_files.config import PRIORITY_LIST, API_TELEGRAM
             from keyboards import User_Keyboards, Owner_Keyboards, Specialist_keyboards
             prior_user = False
 
@@ -171,11 +174,11 @@ async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
     questions_keyboard.adjust(3, repeat=True)
     return questions_keyboard.as_markup()
 
-def fuzzy_handler(pattern: list, user_question: str):
+def fuzzy_handler(user_question: str, pattern: list):
 
     def extract_filtered(dictionary: dict, similarity_values: list) -> dict:
         clean_dictionary = dict()
-        result = list(filter(lambda x: x >= 50, similarity_values))
+        result = list(filter(lambda x: x >= 60, similarity_values))
 
         if result == []:
             return None, None
@@ -209,19 +212,28 @@ def fuzzy_handler(pattern: list, user_question: str):
     if filtered_dictionary == None:
         return None, None
     else:
-        pattern_answers = ''
+        pattern_answers = '' ; keys_seq = list(dict_container.keys())
+        
         for value in maximum_values:
-            for number, phrase in enumerate(text_orig[value[0] + 1:]):
-                
-                if 'вопрос:' in phrase:
-                    break
-                else:
-                    pattern_answers = pattern_answers + f"{phrase}"
+            value_index = keys_seq.index(value[0])
+            try:
+                pattern_answers = pattern_answers + ''.join(text_orig[value[0] + 1: keys_seq[value_index + 1]])
+            except IndexError:
+                pattern_answers = text_orig[value[0] + 1]
+            pattern_answers = pattern_answers.replace('ответ:','', 1)
                     
-        pattern_questions = list(filtered_dictionary.values())
+        pattern_questions = list(filtered_dictionary.items())
         return pattern_answers, pattern_questions
 
 def file_reader(file_path: str):
     with open(file=file_path, mode='r', buffering=-1, encoding="utf-8") as file:
         pattern_text = file.readlines()
         return pattern_text
+
+@user_registration_decorator
+async def question_redirect(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    user_question = data['user_question']
+    await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'])
+    await message.answer('Ваш вопрос передан', reply_markup=ReplyKeyboardRemove())
+    await state.clear()

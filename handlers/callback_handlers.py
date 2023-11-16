@@ -44,11 +44,11 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             await state.update_data(question=value)
             if key == 'lp_user_id':
                 continue
-            result += f'{key}: {value}'
+            result += f'{key}: {value}\n'
 
         lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
         user_name = lp_user_info[0][3] 
-        result += f'\nuser_name: {user_name}'
+        result += f'user_name: {user_name}'
         # question_form_info = await db.get_question_form(lp_user_id=information['lp_user_id'])
         # question_id = question_form_info[0]
         await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
@@ -65,7 +65,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                      answer='Вопрос взят',
                                      specialist_id=callback.from_user.id)
             await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-            await callback.message.answer('Введите свой вопрос')
+            await callback.message.answer('Введите свой ответ')
             await state.set_state(Specialist_states.answer_question)
     elif callback.data == 'close_question':
         data = await state.get_data()

@@ -86,7 +86,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                      answer='Вопрос взят',
                                      specialist_id=callback.from_user.id)
             await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-            await callback.message.answer('Введите свой вопрос')
+            await callback.message.answer('Введите свой ответ')
             await state.set_state(Specialist_states.answer_question)
     elif callback.data == 'close_question':
         data = await state.get_data()
@@ -94,6 +94,15 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                  answer='Закрытие вопроса',
                                  specialist_id=callback.from_user.id)
         await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
+    elif callback.data == 'back_to_pool':
+        keyboard = await create_inline_keyboard(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
+        await state.set_state(Specialist_states.choosing_question)
+    elif callback.data == 'answer_the_question':
+        keyboard = await create_inline_keyboard(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
+        await state.set_state(Specialist_states.choosing_question)
+
 
 @router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:

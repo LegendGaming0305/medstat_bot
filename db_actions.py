@@ -220,7 +220,10 @@ class Database():
         if self.connection is None:
             await self.create_connection()
         inspector_id = await self.connection.fetchrow('''SELECT id FROM high_priority_users WHERE user_id = ($1)''', admin_id)
-        inspector_id = inspector_id[0]
+        try:
+            inspector_id = inspector_id[0]
+        except TypeError:
+            inspector_id = 0
         await self.connection.execute('''UPDATE low_priority_users SET registration_state = ($1), process_regulator = ($2) WHERE id = ($3)''', 
                                       reg_status, inspector_id, string_id)
         
@@ -254,7 +257,7 @@ class Database():
     async def get_specialits_questions(self, specialist_id: int) -> list:
         if self.connection is None:
             await self.create_connection()
-
+        
         form_id = await self.connection.fetchval('''SELECT ft.id
                                                  FROM form_types ft
                                                  JOIN high_priority_users hp ON ft.specialist = hp.id

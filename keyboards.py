@@ -211,7 +211,8 @@ class Specialist_keyboards():
         question_keyboard = InlineKeyboardBuilder()
         choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data=f'choose_question')
         close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data=f'close_question')
-        question_keyboard.add(choose_button, close_button)
+        back_to_pool = InlineKeyboardButton(text='Вернуться к вопросам', callback_data=f'back_to_pool')
+        question_keyboard.add(choose_button, close_button, back_to_pool)
         question_keyboard.adjust(2)
         return question_keyboard.as_markup()
 

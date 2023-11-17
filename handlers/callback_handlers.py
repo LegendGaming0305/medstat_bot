@@ -98,10 +98,6 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         keyboard = await create_inline_keyboard(callback.from_user.id)
         await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
         await state.set_state(Specialist_states.choosing_question)
-    elif callback.data == 'answer_the_question':
-        keyboard = await create_inline_keyboard(callback.from_user.id)
-        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-        await state.set_state(Specialist_states.choosing_question)
 
 
 @router.callback_query(User_states.form_choosing)
@@ -156,17 +152,34 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     async def getting_started(callback: types.CallbackQuery, state: FSMContext, *args):
         await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму', reply_markup=User_Keyboards.section_chose().as_markup())
         await state.set_state(User_states.form_choosing)
-
+    chat_id = callback.from_user.id
+    from main import bot
     if callback.data == 'npa':
-        await callback.message.edit_text('НПА')
+        await bot.send_document(chat_id=chat_id,
+                                document='BQACAgIAAxkBAAIGK2VXPgU1Hi2v-89gziIEgLjchFaQAAJNOAACah64Sl1aSOIk1wABwTME')
+        await bot.send_document(chat_id=chat_id,
+                                document='BQACAgIAAxkBAAIGLGVXPhfXBvgGqPh1GQJJCgddAxd8AAJPOAACah64SmHR0Xxwyd3YMwQ')
+        await bot.send_document(chat_id=chat_id,
+                                document='BQACAgIAAxkBAAIGLWVXPmXLgVj-5VDpQsHk47vk2ti3AAJUOAACah64SmgjWufzx-ZPMwQ')
+        await bot.send_document(chat_id=chat_id,
+                                document='BQACAgIAAxkBAAIGLmVXPy-afxHcCQqjJLwljUV31m9DAAJbOAACah64Sn6s7HayeS3aMwQ')
     elif callback.data == 'main_menu':
         await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     elif callback.data == 'medstat':
-        await callback.message.edit_text('Медстат')
+        await bot.send_document(chat_id=chat_id,
+                                document='BQACAgIAAxkBAAIGKmVXPf_lixoXHDYS_7vCr9XYg7ZoAAJKOAACah64Sq9HPjDgDOFQMwQ')
     elif callback.data == 'statistic':
-        await callback.message.edit_text('Статистика')
+        await bot.send_document(chat_id=chat_id,
+                                document='BQACAgIAAxkBAAIGJmVXOsMcgevHefPEnQj20Z9ACBUJAAIhOAACah64SvNHf-P94iWtMwQ')
+        await bot.send_document(chat_id=chat_id, 
+                                document='BQACAgIAAxkBAAIGJ2VXO_9pbBC9S3lWkC_LeDQMxuJPAAI0OAACah64SvOhsb6UYn1GMwQ')
+        await bot.send_document(chat_id=chat_id, 
+                                document='BQACAgIAAxkBAAIGKGVXPA5hnyS3pN5TKXPzuh7LybSWAAI2OAACah64ShEL9uIIerUSMwQ')
+        await bot.send_document(chat_id=chat_id, 
+                                document='BQACAgIAAxkBAAIGKWVXPDWvQIvOXfpnGF4eyOAnFpjIAAI5OAACah64SsJyNl0X5tqkMwQ')
     elif callback.data == 'method_recommendations':
-        await callback.message.edit_text('Методические рекомендации')
+        await bot.send_document(chat_id=chat_id, 
+                                document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
     elif callback.data == 'registration':
         await state.set_state(User_states.reg_fio)
         markup = await User_Keyboards.create_district_buttons()

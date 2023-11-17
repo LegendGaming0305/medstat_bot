@@ -132,10 +132,10 @@ class Owner_Keyboards():
         owner_starting_keyboard = InlineKeyboardBuilder()
 
         admin_panel = InlineKeyboardButton(text='Админ-панель', callback_data='admin_panel')
-        tester_panel = InlineKeyboardButton(text='Тестер-панель', callback_data='tester_panel')
+        # tester_panel = InlineKeyboardButton(text='Тестер-панель', callback_data='tester_panel')
         user_panel = InlineKeyboardButton(text='Юзер-панель', callback_data='user_panel')
         specialist_panel = InlineKeyboardButton(text='Специалист-панель', callback_data='specialist_panel')
-        owner_starting_keyboard.add(admin_panel, tester_panel, user_panel, specialist_panel)
+        owner_starting_keyboard.add(admin_panel, user_panel, specialist_panel)
         return owner_starting_keyboard
     
     owner_starting_keyboard = main_menu().adjust(1, repeat=True)

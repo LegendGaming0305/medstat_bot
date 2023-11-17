@@ -6,8 +6,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fuzzywuzzy import fuzz
 from aiogram.fsm.context import FSMContext
 from aiogram import types
-from aiogram import Bot
-from aiogram.enums import ParseMode
 
 from db_actions import Database
 
@@ -179,7 +177,7 @@ def fuzzy_handler(user_question: str, pattern: list):
 
     def extract_filtered(dictionary: dict, similarity_values: list) -> dict:
         clean_dictionary = dict()
-        result = list(filter(lambda x: x >= 60, similarity_values))
+        result = list(filter(lambda x: x >= 50, similarity_values))
 
         if result == []:
             return None, None

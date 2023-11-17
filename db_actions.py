@@ -69,9 +69,7 @@ class Database():
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS form_types(
                                       id SERIAL PRIMARY KEY,
                                       form_name VARCHAR(250),
-                                      form_tag VARCHAR(10),
-                                      specialist SMALLINT CHECK (specialist > 0) DEFAULT NULL,
-                                      FOREIGN KEY (specialist) REFERENCES high_priority_users (id))''')
+                                      form_tag VARCHAR(20))''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS questions_forms(
                                       id SERIAL PRIMARY KEY,
                                       lp_user_id INTEGER CHECK (lp_user_id > 0) NOT NULL,
@@ -82,6 +80,12 @@ class Database():
                                       question_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                       question_chat_type VARCHAR(20) DEFAULT 'Personal',
                                       question_state STATE DEFAULT 'Pending')''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS specialist_forms(
+                                      specialist_id INT,
+                                      form_id INT,
+                                      FOREIGN KEY (specialist_id) REFERENCES high_priority_users (id),
+                                      FOREIGN KEY (form_id) REFERENCES form_types (id),
+                                      PRIMARY KEY (specialist_id, form_id))''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS answer_process(
                                       id SERIAL PRIMARY KEY,
                                       question_id INTEGER CHECK (question_id > 0) NOT NULL,
@@ -257,12 +261,14 @@ class Database():
     async def get_specialits_questions(self, specialist_id: int) -> list:
         if self.connection is None:
             await self.create_connection()
-        
-        form_id = await self.connection.fetchval('''SELECT ft.id
-                                                 FROM form_types ft
-                                                 JOIN high_priority_users hp ON ft.specialist = hp.id
-                                                 WHERE hp.user_id = $1''', specialist_id)
-        result = await self.connection.fetch('''SELECT id, question_content, lp_user_id FROM questions_forms WHERE section_form = $1 AND question_state = 'Pending';''', form_id)
+
+        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name
+                                                FROM questions_forms q
+                                                JOIN form_types ft ON q.section_form = ft.id
+                                                JOIN specialist_forms sf ON ft.id = sf.form_id
+                                                JOIN high_priority_users hp ON sf.specialist_id = hp.id
+                                                WHERE hp.user_id = $1 AND q.question_state = 'Pending'
+                                            ''', specialist_id)
         return result
     
     async def answer_process_report(self, question_id: int, answer: str, specialist_id: int) -> None:

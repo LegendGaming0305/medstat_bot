@@ -24,7 +24,7 @@ class Database():
         '''
         Создание подключения к БД PostrgeSQL
         '''
-        self.connection = await asyncpg.connect(database='telegram', user='postgres', password='',
+        self.connection = await asyncpg.connect(database='telegram', user='postgres', password='!qwe@123#',
                                                 host='localhost')
 
     async def create_table(self) -> None:

@@ -103,3 +103,7 @@ async def process_answer(message: types.Message, state: FSMContext):
     await bot.send_message(chat_id=user_id, text=f'Ответ:\n{message.text}')
     await message.reply('Ответ отправлен', reply_markup=Specialist_keyboards.questions_gen())
     await state.clear()
+
+@router.message(F.document)
+async def test(message: types.Message):
+    print(message.document)

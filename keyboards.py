@@ -60,9 +60,12 @@ class User_Keyboards():
         button_eight = InlineKeyboardButton(text='• Ф. № 14, 19, 41, 54, 16-ВН, 1-РБ, 1-Дети (здрав), 32, 232(вкладыш), 53, 70', callback_data='sec_eight')
         button_nine = InlineKeyboardButton(text='• Специализированные формы (№ 7, 9, 34; Ф. № 10, 36; Ф. № 36 -ПЛ; Ф. № 11, 37; Ф. № 13; Ф. № 15; Ф. № 55, 56; Ф. № 57; Ф. № 61; Ф. № 64 ; Ф. № 30 (в части работы Лабораторной службы)', callback_data='sec_nine')
         button_ten = InlineKeyboardButton(text='Чат координаторов', callback_data='sec_ten')
+        button_eleven = InlineKeyboardButton(text='• Нормативные документы', callback_data='sec_eleven')
+        button_medstat = InlineKeyboardButton(text='• Система МЕДСТАТ', callback_data='sec_medstat')
+        button_general = InlineKeyboardButton(text='• Общий раздел', callback_data='sec_general')
 
-        section_key.add(button_one, button_two, button_three, button_four, 
-                        button_five, button_six, button_seven, button_eight,
+        section_key.add(button_eleven, button_medstat, button_general, button_one, button_two, button_three, 
+                        button_four, button_five, button_six, button_seven, button_eight,
                         button_nine, button_ten)
         
         return section_key.adjust(1, repeat=True)

@@ -156,24 +156,18 @@ def fio_handler(fio: str) -> str:
     except IndexError:
         return "Некорректное имя"
 
-async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
-    # from main import db
-    questions_keyboard = InlineKeyboardBuilder()
+async def create_questions(specialist_id: int) -> tuple[dict]:
     rows = await db.get_specialits_questions(specialist_id=specialist_id)
+    questions = []
     for row in rows:
         question_info = list(row.values())
     
         data = {'question': question_info[1],
                 'lp_user_id': question_info[2],
                 'form_name': question_info[3]}
-        # Переводим данные в json формат
-        serialized_data = json.dumps(data)
-        # Сохраняем в кэш память
-        await cache.set(question_info[0], serialized_data)
-        button = InlineKeyboardButton(text=f'Вопрос {question_info[0]}', callback_data=f'question:{question_info[0]}')
-        questions_keyboard.add(button)
-    questions_keyboard.adjust(3, repeat=True)
-    return questions_keyboard.as_markup()
+        
+        questions.append(data)
+    return tuple(questions)     
 
 def fuzzy_handler(user_question: str, pattern: list):
 

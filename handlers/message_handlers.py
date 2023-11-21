@@ -95,13 +95,17 @@ async def process_answer(message: types.Message, state: FSMContext):
     from main import bot
     data = await state.get_data()
     question_id = data['question_id']
+    message_id = data['question_message']
+    question_text = data['question']
     lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
     user_id = tuple_of_info[1][1]
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)
     await bot.send_message(chat_id=user_id, text=f'Ответ:\n{message.text}')
-    await message.reply('Ответ отправлен', reply_markup=Specialist_keyboards.questions_gen())
+    await message.reply('Ответ отправлен')
+    await bot.edit_message_text(text=f'<b>Вы ответили на этот вопрос</b>\n{question_text}', chat_id=message.from_user.id,
+                                message_id=message_id)
     await state.clear()
 
 @router.message(F.document)

@@ -314,3 +314,10 @@ class Database():
             miac = await self.connection.fetchval('''SELECT miac_name FROM miacs
                                                   WHERE id = $1''', miac_id)
             return miac
+        
+    async def get_question_id(self, question: str) -> int:
+        if self.connection is None:
+            await self.create_connection()
+        question_id = await self.connection.fetchval('''SELECT id FROM questions_forms
+                                                     WHERE question_content = $1''', question)
+        return question_id

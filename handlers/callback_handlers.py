@@ -7,7 +7,7 @@ import json
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_inline_keyboard, fuzzy_handler
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -49,56 +49,6 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
     elif callback_data == "back_to_fuzzy":
         keyboard, text = User_Keyboards.fuzzy_buttons_generate(information)
         await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
-
-@router.callback_query(Specialist_states.choosing_question)
-async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
-    '''
-    Выбор вопроса специалистом
-    '''
-    if 'question:' in callback.data:
-        callback_data = callback.data.split(':')[-1]
-        from additional_functions import cache
-        data = await cache.get(int(callback_data))
-        information = json.loads(data)
-        result = ''
-        for key, value in information.items():
-            await state.update_data(question=value)
-            if key == 'lp_user_id':
-                continue
-            result += f'{key}: {value}\n'
-
-        lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
-        user_name = lp_user_info[0][3] 
-        result += f'user_name: {user_name}'
-        # question_form_info = await db.get_question_form(lp_user_id=information['lp_user_id'])
-        # question_id = question_form_info[0]
-        await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
-        await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
-    elif callback.data == 'choose_question':
-        markup = InlineKeyboardBuilder()
-        data = await state.get_data()
-        question_id = data['question_id']
-        result_check = db.check_question(question_id=question_id)
-        if result_check == 'Вопрос взят':
-            await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
-        else:
-            await db.answer_process_report(question_id=int(question_id),
-                                     answer='Вопрос взят',
-                                     specialist_id=callback.from_user.id)
-            await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-            await callback.message.answer('Введите свой ответ')
-            await state.set_state(Specialist_states.answer_question)
-    elif callback.data == 'close_question':
-        data = await state.get_data()
-        await db.answer_process_report(question_id=int(data['question_id']),
-                                 answer='Закрытие вопроса',
-                                 specialist_id=callback.from_user.id)
-        await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
-    elif callback.data == 'back_to_pool':
-        keyboard = await create_inline_keyboard(callback.from_user.id)
-        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-        await state.set_state(Specialist_states.choosing_question)
-
 
 @router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -194,6 +144,42 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'user_panel':
         pass
     elif callback.data == 'answer_the_question':
-        keyboard = await create_inline_keyboard(callback.from_user.id)
-        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-        await state.set_state(Specialist_states.choosing_question)
+        questions = await create_questions(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос')
+        message_ids = []
+        for question in questions:
+            lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+            user_name = lp_user_info[0][3]
+            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
+                                        reply_markup=Specialist_keyboards.question_buttons())
+            message_ids.append(message.message_id)
+        await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                    reply_markup=Specialist_keyboards.questions_gen())
+        # await state.set_state(Specialist_states.choosing_question)
+        try:
+            await state.update_data(user_id=question['lp_user_id'], message_ids=message_ids)
+        except UnboundLocalError:
+            pass
+    elif callback.data == 'choose_question':
+        markup = InlineKeyboardBuilder()
+        question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
+        result_check = db.check_question(question_id=question_id)
+        if result_check == 'Вопрос взят':
+            await callback.message.edit_text(f'<b>Вопрос взят</b>\n{callback.message.html_text}')
+            await callback.message.answer('Выберите другой вопрос, так как на этот уже отвечает другой специалист')
+        else:
+            await db.answer_process_report(question_id=int(question_id),
+                                     answer='Вопрос взят',
+                                     specialist_id=callback.from_user.id)
+            await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
+            edit = await callback.message.edit_text(f'<b>Выбранный вопрос</b>\n{callback.message.html_text}')
+            await callback.message.answer('Введите свой ответ')
+            await state.set_state(Specialist_states.answer_question)
+            await state.update_data(question_id=question_id, question_message=edit.message_id,
+                                    question=callback.message.html_text)
+    elif callback.data == 'close_question':
+        question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
+        await db.answer_process_report(question_id=int(question_id),
+                                 answer='Закрытие вопроса',
+                                 specialist_id=callback.from_user.id)
+        await callback.message.edit_text(f'<b>Вопрос закрыт</b>\n{callback.message.html_text}')

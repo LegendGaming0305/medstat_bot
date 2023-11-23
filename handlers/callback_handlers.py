@@ -157,13 +157,14 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
                                     reply_markup=Specialist_keyboards.questions_gen())
         # await state.set_state(Specialist_states.choosing_question)
         try:
-            await state.update_data(user_id=question['lp_user_id'], message_ids=message_ids)
+            await state.update_data(message_ids=message_ids)
         except UnboundLocalError:
             pass
     elif callback.data == 'choose_question':
         markup = InlineKeyboardBuilder()
         question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
-        result_check = db.check_question(question_id=question_id)
+        result_check = await db.check_question(question_id=question_id)
+        lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[3].strip())
         if result_check == 'Вопрос взят':
             await callback.message.edit_text(f'<b>Вопрос взят</b>\n{callback.message.html_text}')
             await callback.message.answer('Выберите другой вопрос, так как на этот уже отвечает другой специалист')
@@ -176,7 +177,8 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
             await callback.message.answer('Введите свой ответ')
             await state.set_state(Specialist_states.answer_question)
             await state.update_data(question_id=question_id, question_message=edit.message_id,
-                                    question=callback.message.html_text)
+                                    question=callback.message.html_text,
+                                    user_id=lp_user_id)
     elif callback.data == 'close_question':
         question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
         await db.answer_process_report(question_id=int(question_id),

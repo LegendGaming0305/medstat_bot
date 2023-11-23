@@ -104,9 +104,10 @@ async def process_answer(message: types.Message, state: FSMContext):
                              specialist_id=message.from_user.id)
     await bot.send_message(chat_id=user_id, text=f'Ответ:\n{message.text}')
     await message.reply('Ответ отправлен')
+    await state.clear()
     await bot.edit_message_text(text=f'<b>Вы ответили на этот вопрос</b>\n{question_text}', chat_id=message.from_user.id,
                                 message_id=message_id)
-    await state.clear()
+
 
 @router.message(F.document)
 async def test(message: types.Message):

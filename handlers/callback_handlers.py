@@ -7,7 +7,7 @@ import json
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_inline_keyboard, fuzzy_handler
+from additional_functions import access_block_decorator, fuzzy_handler
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -52,11 +52,8 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
-    '''
-    Выбор вопроса специалистом
-    '''
-    if 'question:' in callback.data:
-        callback_data = callback.data.split(':')[-1]
+
+    async def question_generation(callback_data: str):
         from additional_functions import cache
         data = await cache.get(int(callback_data))
         information = json.loads(data)
@@ -70,8 +67,14 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
         user_name = lp_user_info[0][3] 
         result += f'user_name: {user_name}'
-        # question_form_info = await db.get_question_form(lp_user_id=information['lp_user_id'])
-        # question_id = question_form_info[0]
+        return information, result
+
+    '''
+    Выбор вопроса специалистом
+    '''
+    if 'question:' in callback.data:
+        callback_data = callback.data.split(':')[-1]
+        information, result = await question_generation(callback_data=callback_data)
         await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
         await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
     elif callback.data == 'choose_question':
@@ -82,9 +85,9 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         if result_check == 'Вопрос взят':
             await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
         else:
-            await db.answer_process_report(question_id=int(question_id),
-                                     answer='Вопрос взят',
-                                     specialist_id=callback.from_user.id)
+            # await db.answer_process_report(question_id=int(question_id),
+            #                          answer='Вопрос взят',
+            #                          specialist_id=callback.from_user.id)
             await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
             await callback.message.answer('Введите свой ответ')
             await state.set_state(Specialist_states.answer_question)
@@ -95,7 +98,22 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                  specialist_id=callback.from_user.id)
         await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
     elif callback.data == 'back_to_pool':
-        keyboard = await create_inline_keyboard(callback.from_user.id)
+        keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
+        await state.set_state(Specialist_states.choosing_question)
+    elif callback.data == 'dialogue_history':
+        data = await state.get_data()
+        history_text = "" ; next_string = "\n"
+        information_tuple = await db.get_user_history(question_id=int(data['question_id']))
+        history = information_tuple[0] ; history = list(history.items())
+        user_full_identification = list(information_tuple[1])
+        history_text += f'Телеграм-никнейм пользователя: {user_full_identification[1]}{next_string}ФИО пользователя: {user_full_identification[2]}{next_string}{next_string}'
+    
+        for i in range(len(history)):
+            history_text += f"""{''.join([f'{elem[0]} - {elem[1]}{next_string}' for elem in list(history[i][1].items())])}\n\n"""
+        await callback.message.edit_text(text=history_text, reply_markup=Specialist_keyboards.question_buttons(condition=int(data['question_id'])))
+    elif callback.data == 'answer_the_question':
+        keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
         await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
         await state.set_state(Specialist_states.choosing_question)
 
@@ -152,6 +170,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     async def getting_started(callback: types.CallbackQuery, state: FSMContext, *args):
         await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму', reply_markup=User_Keyboards.section_chose().as_markup())
         await state.set_state(User_states.form_choosing)
+
     chat_id = callback.from_user.id
     from main import bot
     if callback.data == 'npa':
@@ -194,6 +213,6 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'user_panel':
         pass
     elif callback.data == 'answer_the_question':
-        keyboard = await create_inline_keyboard(callback.from_user.id)
+        keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
         await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
         await state.set_state(Specialist_states.choosing_question)

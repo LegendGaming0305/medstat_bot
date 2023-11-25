@@ -1,5 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+import json
 
 from db_actions import Database
 from additional_functions import fio_handler
@@ -195,28 +196,57 @@ class Admin_Keyboards():
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
 
+    async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
+    # from main import db
+        questions_keyboard = InlineKeyboardBuilder()
+        rows = await db.get_specialits_questions(specialist_id=specialist_id)
+        for row in rows:
+            question_info = list(row.values())
+        
+            data = {'question': question_info[1],
+                    'lp_user_id': question_info[2],
+                    'form_name': question_info[3]}
+            # Переводим данные в json формат
+            serialized_data = json.dumps(data)
+            # Сохраняем в кэш память
+            await cache.set(question_info[0], serialized_data)
+            button = InlineKeyboardButton(text=f'Вопрос {question_info[0]}', callback_data=f'question:{question_info[0]}')
+            questions_keyboard.add(button)
+        questions_keyboard.adjust(3, repeat=True)
+        return questions_keyboard.as_markup()
+
     def questions_gen() -> InlineKeyboardBuilder:
         '''
         Создание кнопок вопросов для специалиста
         '''
         specialist_starting_keyboard = InlineKeyboardBuilder()
 
-        answer_the_question = InlineKeyboardButton(text='Ответить на вопрос', callback_data='answer_the_question')
+        answer_the_question = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question')
 
         specialist_starting_keyboard.add(answer_the_question)
         specialist_starting_keyboard.adjust(1)
         return specialist_starting_keyboard.as_markup()
     
-    def question_buttons() -> InlineKeyboardBuilder:
+    def question_buttons(condition: str = None, ) -> InlineKeyboardBuilder:
         '''
         Создание кнопок для взаимодействия с вопросом
         '''
         question_keyboard = InlineKeyboardBuilder()
-        choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data=f'choose_question')
-        close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data=f'close_question')
-        back_to_pool = InlineKeyboardButton(text='Вернуться к вопросам', callback_data=f'back_to_pool')
-        question_keyboard.add(choose_button, close_button, back_to_pool)
-        question_keyboard.adjust(2)
-        return question_keyboard.as_markup()
-
+        if condition == None:
+            choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data=f'choose_question')
+            close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data=f'close_question')
+            back_to_pool = InlineKeyboardButton(text='Вернуться к вопросам', callback_data=f'back_to_pool')
+            check_history = InlineKeyboardButton(text='История диалога', callback_data=f'dialogue_history')
+            question_keyboard.add(choose_button, close_button, back_to_pool, check_history)
+            question_keyboard.adjust(2)
+            return question_keyboard.as_markup()
+        elif condition == "back_to_pool":
+            question_keyboard.add(back_to_pool)
+            question_keyboard.adjust(1)
+            return question_keyboard.as_markup()
+        elif isinstance(condition, int) == True:
+            back_to_question = InlineKeyboardButton(text='Вернуться к вопросу', callback_data=f'question:{condition}')
+            question_keyboard.add(back_to_question)
+            question_keyboard.adjust(1)
+            return question_keyboard.as_markup()
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

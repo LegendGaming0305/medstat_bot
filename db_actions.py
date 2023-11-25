@@ -132,11 +132,11 @@ class Database():
         if self.connection is None:
             await self.create_connection()
         
-        test_subj = "Test"
+        # test_subj = "Test"
 
         await self.connection.execute('''INSERT INTO registration_process 
                                            (user_id, subject_name, user_fio, post_name, telephone_number)
-                                           VALUES ($1, $2, $3, $4, $5)''', args[0], test_subj, args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
+                                           VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
 
     async def add_higher_users(self) -> None:
         from non_script_files.config import PRIORITY_LIST
@@ -313,3 +313,31 @@ class Database():
             miac = await self.connection.fetchval('''SELECT miac_name FROM miacs
                                                   WHERE id = $1''', miac_id)
             return miac
+        
+    async def get_user_history(self, question_id: int):
+        if self.connection is None:
+            await self.create_connection()
+        
+        temp_dict = dict() ; resulted_dict = dict()
+        
+        lp_user_id = await self.connection.fetchval("""SELECT lp_user_id FROM questions_forms WHERE id = $1""", question_id)
+        user_name_info = await self.connection.fetchrow("""SELECT lpu.user_id, lpu.telegramm_name, rp.user_fio FROM low_priority_users AS lpu
+                                                        INNER JOIN registration_process AS rp ON lpu.registration_process_id = rp.id
+                                                        WHERE lpu.id = $1""", lp_user_id)
+        history_info = await self.connection.fetch(r"""SELECT ft.form_name, qf.question_content, TO_CHAR(qf.question_date, 'DD.MM.YYYY \ HH:MI:SS') AS question_date, ap.answer_content, TO_CHAR(ap.answer_date, 'DD.MM.YYYY \ HH:MI:SS')  AS answer_date
+                                                   FROM questions_forms AS qf
+                                                   INNER JOIN form_types AS ft ON qf.section_form = ft.id
+                                                   INNER JOIN answer_process AS ap ON qf.id = ap.question_id
+                                                   WHERE qf.lp_user_id = $1 AND ap.answer_content != 'Вопрос взят' ORDER BY ap.answer_date""", lp_user_id)
+        
+        for i in range(len(history_info)):
+            temp_dict.update(zip(["Название формы", "Содержание вопроса", "Дата\время вопроса", "Содержание ответа", "Дата\время ответа"], history_info[i][:5]))
+            resulted_dict[f"Запись №{i + 1}"] = temp_dict.copy()
+            temp_dict.clear()
+        
+        return resulted_dict, user_name_info
+
+        
+        
+        
+        

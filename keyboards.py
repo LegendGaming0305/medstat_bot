@@ -103,11 +103,11 @@ class User_Keyboards():
     def fuzzy_buttons_generate(questions) -> InlineKeyboardBuilder:
         text_pattern = []
         fuzzy_keyboard = InlineKeyboardBuilder()
-        buttons_data = [InlineKeyboardButton(text=f"Вопрос №{num + 1}", callback_data=f"fuzzy_buttons&simular_rate:{value[1][0]}&index:{value[0]}") for num, value in enumerate(questions)]
+        buttons_data = [InlineKeyboardButton(text=f"Ответ на вопрос №{num + 1}", callback_data=f"fuzzy_buttons&simular_rate:{value[1][0]}&index:{value[0]}") for num, value in enumerate(questions)]
         [text_pattern.append(f"Вопрос №{num + 1}: {value[1][1]}\n") for num, value in enumerate(questions)]
         text_pattern = "".join(text_pattern)
         fuzzy_keyboard.add(*[elem for elem in buttons_data])
-        fuzzy_keyboard.adjust(3, repeat=True)
+        fuzzy_keyboard.adjust(1, repeat=True)
         return fuzzy_keyboard, text_pattern
 
     def back_to_fuzzy_questions() -> InlineKeyboardBuilder:
@@ -196,24 +196,24 @@ class Admin_Keyboards():
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
 
-    async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
-    # from main import db
-        questions_keyboard = InlineKeyboardBuilder()
-        rows = await db.get_specialits_questions(specialist_id=specialist_id)
-        for row in rows:
-            question_info = list(row.values())
+    # async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
+    # # from main import db
+    #     questions_keyboard = InlineKeyboardBuilder()
+    #     rows = await db.get_specialits_questions(specialist_id=specialist_id)
+    #     for row in rows:
+    #         question_info = list(row.values())
         
-            data = {'question': question_info[1],
-                    'lp_user_id': question_info[2],
-                    'form_name': question_info[3]}
-            # Переводим данные в json формат
-            serialized_data = json.dumps(data)
-            # Сохраняем в кэш память
-            await cache.set(question_info[0], serialized_data)
-            button = InlineKeyboardButton(text=f'Вопрос {question_info[0]}', callback_data=f'question:{question_info[0]}')
-            questions_keyboard.add(button)
-        questions_keyboard.adjust(3, repeat=True)
-        return questions_keyboard.as_markup()
+    #         data = {'question': question_info[1],
+    #                 'lp_user_id': question_info[2],
+    #                 'form_name': question_info[3]}
+    #         # Переводим данные в json формат
+    #         serialized_data = json.dumps(data)
+    #         # Сохраняем в кэш память
+    #         await cache.set(question_info[0], serialized_data)
+    #         button = InlineKeyboardButton(text=f'Вопрос {question_info[0]}', callback_data=f'question:{question_info[0]}')
+    #         questions_keyboard.add(button)
+    #     questions_keyboard.adjust(3, repeat=True)
+    #     return questions_keyboard.as_markup()
 
     def questions_gen() -> InlineKeyboardBuilder:
         '''
@@ -227,7 +227,7 @@ class Specialist_keyboards():
         specialist_starting_keyboard.adjust(1)
         return specialist_starting_keyboard.as_markup()
     
-    def question_buttons(condition: str = None, ) -> InlineKeyboardBuilder:
+    def question_buttons(condition: str = None) -> InlineKeyboardBuilder:
         '''
         Создание кнопок для взаимодействия с вопросом
         '''
@@ -235,18 +235,35 @@ class Specialist_keyboards():
         if condition == None:
             choose_button = InlineKeyboardButton(text='Выбрать вопрос', callback_data=f'choose_question')
             close_button = InlineKeyboardButton(text='Закрыть вопрос', callback_data=f'close_question')
-            back_to_pool = InlineKeyboardButton(text='Вернуться к вопросам', callback_data=f'back_to_pool')
             check_history = InlineKeyboardButton(text='История диалога', callback_data=f'dialogue_history')
-            question_keyboard.add(choose_button, close_button, back_to_pool, check_history)
+            question_keyboard.add(choose_button, close_button, check_history)
             question_keyboard.adjust(2)
             return question_keyboard.as_markup()
-        elif condition == "back_to_pool":
-            question_keyboard.add(back_to_pool)
-            question_keyboard.adjust(1)
-            return question_keyboard.as_markup()
-        elif isinstance(condition, int) == True:
-            back_to_question = InlineKeyboardButton(text='Вернуться к вопросу', callback_data=f'question:{condition}')
-            question_keyboard.add(back_to_question)
-            question_keyboard.adjust(1)
-            return question_keyboard.as_markup()
+        elif isinstance(condition, tuple) == True:
+            if condition[2] == 0 and condition[1] == 4:
+                back_to_question = InlineKeyboardButton(text='Вернуться к вопросу', callback_data=f'back_to_question:{condition[0]}')
+                next_page = InlineKeyboardButton(text="Следующая страница", callback_data=f"dialogue_history-limit:4&offset:4")
+                question_keyboard.add(back_to_question, next_page)
+                question_keyboard.adjust(1)
+                return question_keyboard.as_markup()
+            elif condition[2] != 0 and condition[1] == 4:
+                back_to_question = InlineKeyboardButton(text='Вернуться к вопросу', callback_data=f'back_to_question:{condition[0]}')
+                next_page = InlineKeyboardButton(text="Следующая страница", callback_data=f"dialogue_history-limit:4&offset:{condition[2] + 4}")
+                prev_page = InlineKeyboardButton(text="Предыдущая страница", callback_data=f"dialogue_history-limit:4&offset:{condition[2] - 4}")
+                question_keyboard.add(back_to_question, next_page, prev_page)
+                question_keyboard.adjust(1)
+                return question_keyboard.as_markup()
+            elif condition[2] != 0 and condition[1] < 4:
+                back_to_question = InlineKeyboardButton(text='Вернуться к вопросу', callback_data=f'back_to_question:{condition[0]}')
+                prev_page = InlineKeyboardButton(text="Предыдущая страница", callback_data=f"dialogue_history-limit:4&offset:{condition[2] - 4}")
+                question_keyboard.add(back_to_question, prev_page)
+                question_keyboard.adjust(1)
+                return question_keyboard.as_markup()
+            elif condition[2] == 0 and condition[1] < 4:
+                back_to_question = InlineKeyboardButton(text='Вернуться к вопросу', callback_data=f'back_to_question:{condition[0]}')
+                question_keyboard.add(back_to_question)
+                question_keyboard.adjust(1)
+                return question_keyboard.as_markup()
+            
+
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

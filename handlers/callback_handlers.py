@@ -7,13 +7,12 @@ import json
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, fuzzy_handler
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
 db = Database()
 router = Router()
-
 
 @router.callback_query(F.data.contains('district') | F.data.contains('region'))
 async def process_miac_selection(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -52,71 +51,132 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''Выбор вопроса специалистом'''
 
-    async def question_generation(callback_data: str):
-        from additional_functions import cache
-        data = await cache.get(int(callback_data))
-        information = json.loads(data)
-        result = ''
-        for key, value in information.items():
-            await state.update_data(question=value)
-            if key == 'lp_user_id':
-                continue
-            result += f'{key}: {value}\n'
+    # async def question_generation(callback_data: str):
+    #     from additional_functions import cache
+    #     data = await cache.get(int(callback_data))
+    #     information = json.loads(data)
+    #     result = ''
+    #     for key, value in information.items():
+    #         await state.update_data(question=value)
+    #         if key == 'lp_user_id':
+    #             continue
+    #         result += f'{key}: {value}\n'
 
-        lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
-        user_name = lp_user_info[0][3] 
-        result += f'user_name: {user_name}'
-        return information, result
+    #     lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
+    #     user_name = lp_user_info[0][3] 
+    #     result += f'user_name: {user_name}'
+    #     return information, result
 
-    '''
-    Выбор вопроса специалистом
-    '''
-    if 'question:' in callback.data:
-        callback_data = callback.data.split(':')[-1]
-        information, result = await question_generation(callback_data=callback_data)
-        await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
-        await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
-    elif callback.data == 'choose_question':
-        markup = InlineKeyboardBuilder()
-        data = await state.get_data()
-        question_id = data['question_id']
-        result_check = db.check_question(question_id=question_id)
-        if result_check == 'Вопрос взят':
-            await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
+    # if 'question:' in callback.data:
+    #     callback_data = callback.data.split(':')[-1]
+    #     information, result = await question_generation(callback_data=callback_data)
+    #     await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
+    #     await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
+    # elif callback.data == 'choose_question':
+    #     markup = InlineKeyboardBuilder()
+    #     data = await state.get_data()
+    #     question_id = data['question_id']
+    #     result_check = db.check_question(question_id=question_id)
+    #     if result_check == 'Вопрос взят':
+    #         await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
+    #     else:
+    #         await db.answer_process_report(question_id=int(question_id),
+    #                                  answer='Вопрос взят',
+    #                                  specialist_id=callback.from_user.id)
+    #         await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
+    #         await callback.message.answer('Введите свой ответ')
+    #         await state.set_state(Specialist_states.answer_question)
+    # elif callback.data == 'close_question':
+    #     data = await state.get_data()
+    #     await db.answer_process_report(question_id=int(data['question_id']),
+    #                              answer='Закрытие вопроса',
+    #                              specialist_id=callback.from_user.id)
+    #     await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
+    # elif callback.data == 'back_to_pool':
+    #     keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
+    #     await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
+    #     await state.set_state(Specialist_states.choosing_question)
+    # elif callback.data == 'answer_the_question':
+    #     keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
+    #     await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
+    #     await state.set_state(Specialist_states.choosing_question)
+
+    if 'dialogue_history' in callback.data:
+        from cache_container import Data_storage
+        page_number = 1
+        history_text = "" ; NEXT_STRING = "\n"
+
+        if "limit" in callback.data or "offset" in callback.data:
+            passed_values = callback.data.split("&") ; passed_values = passed_values[1].split(":") ; passed_values = int(passed_values[1])
+            page_number = 1 if passed_values == 4 else passed_values // 4 
+            information_tuple = await db.get_user_history(question_id=Data_storage.question_id, values_range=[4, 4 * page_number])
         else:
-            # await db.answer_process_report(question_id=int(question_id),
-            #                          answer='Вопрос взят',
-            #                          specialist_id=callback.from_user.id)
-            await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-            await callback.message.answer('Введите свой ответ')
-            await state.set_state(Specialist_states.answer_question)
-    elif callback.data == 'close_question':
-        data = await state.get_data()
-        await db.answer_process_report(question_id=int(data['question_id']),
-                                 answer='Закрытие вопроса',
-                                 specialist_id=callback.from_user.id)
-        await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
-    elif callback.data == 'back_to_pool':
-        keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
-        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-        await state.set_state(Specialist_states.choosing_question)
-    elif callback.data == 'dialogue_history':
-        data = await state.get_data()
-        history_text = "" ; next_string = "\n"
-        information_tuple = await db.get_user_history(question_id=int(data['question_id']))
+            Data_storage.question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
+            information_tuple = await db.get_user_history(question_id=Data_storage.question_id)
+
         history = information_tuple[0] ; history = list(history.items())
         user_full_identification = list(information_tuple[1])
-        history_text += f'Телеграм-никнейм пользователя: {user_full_identification[1]}{next_string}ФИО пользователя: {user_full_identification[2]}{next_string}{next_string}'
+        history_text += f'Телеграм-никнейм пользователя: {user_full_identification[1]}{NEXT_STRING}ФИО пользователя: {user_full_identification[2]}{NEXT_STRING}{NEXT_STRING}'
     
         for i in range(len(history)):
-            history_text += f"""{''.join([f'{elem[0]} - {elem[1]}{next_string}' for elem in list(history[i][1].items())])}\n\n"""
-        await callback.message.edit_text(text=history_text, reply_markup=Specialist_keyboards.question_buttons(condition=int(data['question_id'])))
+            history_text += f"""{''.join([f'{elem[0]} - {elem[1]}{NEXT_STRING}' for elem in list(history[i][1].items())])}\n\n"""
+        history_text += f"Номер страницы: {page_number + 1}"
+        await callback.message.edit_text(text=history_text, reply_markup=Specialist_keyboards.question_buttons(condition=(Data_storage.question_id, information_tuple[2], 4 * page_number)))
     elif callback.data == 'answer_the_question':
-        keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
-        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-        await state.set_state(Specialist_states.choosing_question)
+        questions = await create_questions(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос')
+        message_ids = []
+        for question in questions:
+            lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+            user_name = lp_user_info[0][3]
+            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
+                                                    reply_markup=Specialist_keyboards.question_buttons())
+            message_ids.append(message.message_id)
+        await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                    reply_markup=Specialist_keyboards.questions_gen())
+        try:
+            await state.update_data(message_ids=message_ids)
+        except UnboundLocalError:
+            pass
+    elif callback.data == 'choose_question':
+        markup = InlineKeyboardBuilder()
+        question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
+        result_check = await db.check_question(question_id=question_id)
+        lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[3].strip())
+        if result_check == 'Вопрос взят':
+            await callback.message.edit_text(f'<b>Вопрос взят</b>\n{callback.message.html_text}')
+            await callback.message.answer('Выберите другой вопрос, так как на этот уже отвечает другой специалист')
+        else:
+            await db.answer_process_report(question_id=int(question_id),
+                                     answer='Вопрос взят',
+                                     specialist_id=callback.from_user.id)
+            await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
+            edit = await callback.message.edit_text(f'<b>Выбранный вопрос</b>\n{callback.message.html_text}')
+            await callback.message.answer('Введите свой ответ')
+            await state.set_state(Specialist_states.answer_question)
+            await state.update_data(question_id=question_id, question_message=edit.message_id,
+                                    question=callback.message.html_text,
+                                    user_id=lp_user_id)
+    elif callback.data == 'close_question':
+        question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
+        await db.answer_process_report(question_id=int(question_id),
+                                 answer='Закрытие вопроса',
+                                 specialist_id=callback.from_user.id)
+        await callback.message.edit_text(f'<b>Вопрос закрыт</b>\n{callback.message.html_text}')
+    elif 'back_to_question' in callback.data:
+        questions = await create_questions(callback.from_user.id)
+        question_id = callback.data ; question_id = question_id.split(":") ; question_id = int(question_id[1])
+        question_info = await db.get_question_id(inputed_question_id=question_id)
 
+        data = {'question': question_info[3],
+                'lp_user_id': question_info[1],
+                'form_name': question_info[2]}
+        
+        lp_user_info = await db.get_lp_user_info(lp_user_id=data['lp_user_id']) ; user_name = lp_user_info[0][3]
+        message = await callback.message.edit_text(text=f'Пользователь: {user_name}\nФорма: {data["form_name"]}\n<b>Вопрос:</b> {data["question"]}', 
+                                        reply_markup=Specialist_keyboards.question_buttons())
 
 @router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -210,9 +270,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await state.set_state(Admin_states.registration_process)
     elif callback.data == 'specialist_panel':
         await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.questions_gen())
+        await state.set_state(Specialist_states.choosing_question)
     elif callback.data == 'user_panel':
         pass
-    elif callback.data == 'answer_the_question':
-        keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
-        await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-        await state.set_state(Specialist_states.choosing_question)
+    

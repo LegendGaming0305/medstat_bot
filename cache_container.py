@@ -12,3 +12,6 @@ caches.set_config({
         }
     }
 })
+
+class Data_storage:
+    question_id = 0

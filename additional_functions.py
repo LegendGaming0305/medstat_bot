@@ -154,6 +154,19 @@ def fio_handler(fio: str) -> str:
     except IndexError:
         return "Некорректное имя"
 
+async def create_questions(specialist_id: int) -> tuple[dict]:
+    rows = await db.get_specialits_questions(specialist_id=specialist_id)
+    questions = []
+    for row in rows:
+        question_info = list(row.values())
+    
+        data = {'question': question_info[1],
+                'lp_user_id': question_info[2],
+                'form_name': question_info[3]}
+        
+        questions.append(data)
+    return tuple(questions)     
+
 def fuzzy_handler(user_question: str, pattern: list):
 
     def extract_filtered(dictionary: dict, similarity_values: list) -> dict:
@@ -210,10 +223,11 @@ def file_reader(file_path: str):
         pattern_text = file.readlines()
         return pattern_text
 
-@user_registration_decorator
 async def question_redirect(message: types.Message, state: FSMContext):
+    from keyboards import User_Keyboards
     data = await state.get_data()
     user_question = data['user_question']
-    await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'])
+    await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'], message_id=message.message_id)
     await message.answer('Ваш вопрос передан', reply_markup=ReplyKeyboardRemove())
+    await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await state.clear()

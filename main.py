@@ -12,7 +12,6 @@ db = Database()
 bot = Bot(API_TELEGRAM, parse_mode=ParseMode.HTML)
 
 async def on_startup():
-    # await db.create_database()
     await db.create_connection()
     await db.create_table()
     await db.add_higher_users()

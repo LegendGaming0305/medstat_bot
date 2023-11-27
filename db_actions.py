@@ -72,6 +72,7 @@ class Database():
                                       form_tag VARCHAR(20))''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS questions_forms(
                                       id SERIAL PRIMARY KEY,
+                                      question_message INTEGER CHECK (question_message > 0) NOT NULL,
                                       lp_user_id INTEGER CHECK (lp_user_id > 0) NOT NULL,
                                       FOREIGN KEY (lp_user_id) REFERENCES low_priority_users (id),
                                       section_form SMALLINT CHECK (section_form > 0) NOT NULL,
@@ -247,15 +248,15 @@ class Database():
 
         return await self.connection.fetchval('''SELECT id FROM low_priority_users WHERE user_id = ($1)''', user_id)
 
-    async def process_question(self, user_id: int, question: str, form: str) -> None:
+    async def process_question(self, user_id: int, question: str, form: str, message_id: int) -> None:
         '''
         Ввод вопроса по форме в БД
         '''
         if self.connection is None:
             await self.create_connection()
         form_id = await self.connection.fetchval('''SELECT id FROM form_types WHERE form_tag = $1''', form) 
-        await self.connection.execute('''INSERT INTO questions_forms (lp_user_id, section_form, question_content)
-                                      VALUES ($1, $2, $3)''', await Database().get_lp_user_id(user_id=user_id), form_id, question)
+        await self.connection.execute('''INSERT INTO questions_forms (lp_user_id, section_form, question_content, question_message)
+                                      VALUES ($1, $2, $3, $4)''', await Database().get_lp_user_id(user_id=user_id), form_id, question, message_id)
     
     async def get_specialits_questions(self, specialist_id: int) -> list:
         if self.connection is None:
@@ -314,11 +315,12 @@ class Database():
                                                   WHERE id = $1''', miac_id)
             return miac
         
-    async def get_user_history(self, question_id: int):
+    async def get_user_history(self, question_id: int, values_range: list = [4, 0]):
         if self.connection is None:
             await self.create_connection()
         
         temp_dict = dict() ; resulted_dict = dict()
+        showed_values, hidden_values = values_range[0], values_range[1]
         
         lp_user_id = await self.connection.fetchval("""SELECT lp_user_id FROM questions_forms WHERE id = $1""", question_id)
         user_name_info = await self.connection.fetchrow("""SELECT lpu.user_id, lpu.telegramm_name, rp.user_fio FROM low_priority_users AS lpu
@@ -328,16 +330,39 @@ class Database():
                                                    FROM questions_forms AS qf
                                                    INNER JOIN form_types AS ft ON qf.section_form = ft.id
                                                    INNER JOIN answer_process AS ap ON qf.id = ap.question_id
-                                                   WHERE qf.lp_user_id = $1 AND ap.answer_content != 'Вопрос взят' ORDER BY ap.answer_date""", lp_user_id)
+                                                   WHERE qf.lp_user_id = $1 AND ap.answer_content != 'Вопрос взят' ORDER BY ap.answer_date DESC LIMIT $2 OFFSET $3""", lp_user_id, showed_values, hidden_values)
+        number_of_rows = len(history_info)
         
         for i in range(len(history_info)):
             temp_dict.update(zip(["Название формы", "Содержание вопроса", "Дата\время вопроса", "Содержание ответа", "Дата\время ответа"], history_info[i][:5]))
             resulted_dict[f"Запись №{i + 1}"] = temp_dict.copy()
             temp_dict.clear()
         
-        return resulted_dict, user_name_info
+        return resulted_dict, user_name_info, number_of_rows    
+        
+    async def get_question_id(self, question: str = None, inputed_question_id: int = 0) -> int:
+        if self.connection is None:
+            await self.create_connection()
+        
+        if inputed_question_id != 0:
+            question_data = await self.connection.fetchrow('''SELECT * FROM questions_forms WHERE id = $1''', inputed_question_id)
+            return question_data
+        else:
+            question_id = await self.connection.fetchval('''SELECT id FROM questions_forms
+                                                     WHERE question_content = $1''', question)
+            return question_id
 
-        
-        
-        
-        
+    
+    async def get_user_id(self, question: str) -> int:
+        if self.connection is None:
+            await self.create_connection()
+        user_id = await self.connection.fetchval('''SELECT lp_user_id FROM questions_forms
+                                                     WHERE question_content = $1''', question)
+        return user_id
+
+    async def get_question_message_id(self, question_id: int):
+        if self.connection is None:
+            await self.create_connection()
+
+        message_id = await self.connection.fetchval('''SELECT question_message FROM questions_forms WHERE id = $1''', question_id)
+        return message_id

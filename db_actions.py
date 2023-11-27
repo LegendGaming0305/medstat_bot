@@ -345,7 +345,13 @@ class Database():
             await self.create_connection()
         
         if inputed_question_id != 0:
-            question_data = await self.connection.fetchrow('''SELECT * FROM questions_forms WHERE id = $1''', inputed_question_id)
+            question_data = await self.connection.fetchrow('''
+                SELECT questions_forms.*, form_types.form_name
+                FROM questions_forms
+                JOIN form_types ON questions_forms.section_form = form_types.id
+                WHERE questions_forms.id = $1
+            ''', inputed_question_id)
+
             return question_data
         else:
             question_id = await self.connection.fetchval('''SELECT id FROM questions_forms

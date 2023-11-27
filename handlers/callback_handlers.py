@@ -170,9 +170,9 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         question_id = callback.data ; question_id = question_id.split(":") ; question_id = int(question_id[1])
         question_info = await db.get_question_id(inputed_question_id=question_id)
 
-        data = {'question': question_info[3],
-                'lp_user_id': question_info[1],
-                'form_name': question_info[2]}
+        data = {'question': question_info['question_content'],
+                'lp_user_id': question_info['lp_user_id'],
+                'form_name': question_info['form_name']}
         
         lp_user_info = await db.get_lp_user_info(lp_user_id=data['lp_user_id']) ; user_name = lp_user_info[0][3]
         message = await callback.message.edit_text(text=f'Пользователь: {user_name}\nФорма: {data["form_name"]}\n<b>Вопрос:</b> {data["question"]}', 

@@ -20,6 +20,21 @@ async def process_start(message: types.Message, state: FSMContext) -> None:
     '''
     await state.clear()
 
+@router.message(F.text.contains('Возврат') | F.text.contains('Не нашёл'))
+async def exiting_fuzzy(message: types.Message, state: FSMContext):
+    await message.delete()
+    if "Возврат в главное меню" in message.text:
+        @user_registration_decorator
+        async def process_start(message: types.Message, state: FSMContext) -> None:
+            '''
+            Выдаем пользователю определенный набор кнопок от его статуса
+            '''
+            # await message.reply("Успешный возврат меню...", reply_markup=ReplyKeyboardRemove())
+            await state.clear()
+        await process_start(message, state)
+    elif "Не нашёл подходящего вопроса" in message.text:
+        await question_redirect(message, state)
+
 @router.message(User_states.reg_fio)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     '''
@@ -49,20 +64,6 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.clear()
-
-@router.message(F.text.contains('Возврат') | F.text.contains('Не нашёл'))
-async def exiting_fuzzy(message: types.Message, state: FSMContext):
-    if "Возврат в главное меню" in message.text:
-        @user_registration_decorator
-        async def process_start(message: types.Message, state: FSMContext) -> None:
-            '''
-            Выдаем пользователю определенный набор кнопок от его статуса
-            '''
-            await message.reply("Успешный возврат меню...", reply_markup=ReplyKeyboardRemove())
-            await state.clear()
-        await process_start(message, state)
-    elif "Не нашёл подходящего вопроса" in message.text:
-        await question_redirect(message, state)
 
 @router.message(User_states.fuzzy_process)
 async def process_question_input(message: types.Message, state: FSMContext) -> None:
@@ -103,7 +104,7 @@ async def process_answer(message: types.Message, state: FSMContext):
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)
-    await bot.send_message(chat_id=user_id, text=f'Ответ:\n{message.text}', reply_to_message_id=question_message_id)
+    await bot.send_message(chat_id=user_id, text=f'Вопрос:\n{question_text}\nОтвет:\n{message.text}', reply_to_message_id=question_message_id)
     await message.reply('Ответ отправлен')
     await state.set_state(Specialist_states.choosing_question)
     await bot.edit_message_text(text=f'<b>Вы ответили на этот вопрос</b>\n{question_text}', chat_id=message.from_user.id,

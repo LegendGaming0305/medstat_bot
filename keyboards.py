@@ -1,13 +1,13 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-import json
 
 from db_actions import Database
 from additional_functions import fio_handler
-from cache_container import cache
 
 db = Database()
 
+back_to_menu = [[KeyboardButton(text="Возврат в главное меню")]]
+general_kb = ReplyKeyboardMarkup(keyboard=back_to_menu, resize_keyboard=True)
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
@@ -123,6 +123,7 @@ class User_Keyboards():
         out_of_pool = ReplyKeyboardMarkup(keyboard=kb,
                                         resize_keyboard=True)
         return out_of_pool
+
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------O-W-N-E-R-P-A-N-E-L----------------------------------------------
@@ -193,6 +194,7 @@ class Admin_Keyboards():
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
+
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
 
@@ -265,5 +267,4 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
-
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

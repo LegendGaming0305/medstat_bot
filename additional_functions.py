@@ -6,12 +6,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fuzzywuzzy import fuzz
 from aiogram.fsm.context import FSMContext
 from aiogram import types
+import asyncio
 
 from db_actions import Database
 
 db = Database()
-
-from cache_container import cache
 
 def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = "a", **kwargs):
         
@@ -54,7 +53,7 @@ def access_block_decorator(func):
                 case 'Pending':
                     await kwargs["answer_type"].answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
                 case 'Decline':
-                    await kwargs["answer_type"].answer(text="Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу")
+                    await kwargs["answer_type"].answer(text="Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу. Свяжитесь с администратором - @tsayushka")
 
         return await locker(quarry_type, state)
     return async_wrapper 
@@ -93,6 +92,7 @@ def quarry_definition_decorator(func):
     return async_wrapper    
 
 def user_registration_decorator(func):
+    from keyboards import general_kb
     ''' 
     Как работает этот декоратор:
     1. Обертка принимает query_type и state от функции, что обернута async_wrapper-ом.
@@ -106,10 +106,11 @@ def user_registration_decorator(func):
     async def async_wrapper(query_type, state):
         @quarry_definition_decorator
         async def registration(**kwargs):
-            from non_script_files.config import PRIORITY_LIST, API_TELEGRAM
+            from non_script_files.config import PRIORITY_LIST
             from keyboards import User_Keyboards, Owner_Keyboards, Specialist_keyboards
             prior_user = False
-
+            backing_to_menu = await kwargs["answer_type"].answer("Успешный возврат меню...", reply_markup=general_kb)
+        
             async def prior_keyboard_send(key_type: InlineKeyboardBuilder, row: str):
                 nonlocal prior_user
                 for string_num in range(len(row)):

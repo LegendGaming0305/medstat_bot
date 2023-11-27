@@ -101,10 +101,11 @@ async def process_answer(message: types.Message, state: FSMContext):
     question_text = data['question']
     lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
     user_id = tuple_of_info[1][1]
+    question_text_for_user = question_text.split("\n")
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)
-    await bot.send_message(chat_id=user_id, text=f'Вопрос:\n{question_text}\nОтвет:\n{message.text}', reply_to_message_id=question_message_id)
+    await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {message.text}', reply_to_message_id=question_message_id)
     await message.reply('Ответ отправлен')
     await state.set_state(Specialist_states.choosing_question)
     await bot.edit_message_text(text=f'<b>Вы ответили на этот вопрос</b>\n{question_text}', chat_id=message.from_user.id,

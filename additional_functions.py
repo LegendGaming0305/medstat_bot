@@ -229,6 +229,6 @@ async def question_redirect(message: types.Message, state: FSMContext):
     data = await state.get_data()
     user_question = data['user_question']
     await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'], message_id=message.message_id)
-    await message.answer('Ваш вопрос передан', reply_markup=ReplyKeyboardRemove())
+    await message.answer('Ваш вопрос передан')
     await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await state.clear()

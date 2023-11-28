@@ -2,12 +2,13 @@ from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import FSInputFile
 import json
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_questions, fuzzy_handler
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -183,9 +184,18 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
     '''
     Обработка запросов от inline-кнопок форм
     '''
-    await state.update_data(tag=callback.data)
-    await callback.message.edit_text('Введите Ваш вопрос')
-    await state.set_state(User_states.fuzzy_process)
+    from main import bot
+    if callback.data == 'sec_ten':
+        link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+                                          name='Чат координаторов',
+                                          member_limit=1)
+        await callback.message.answer(text=f'Ссылка на чат координаторов {link.invite_link}')
+        await callback.message.edit_text(text='Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+        await state.clear()
+    else:
+        await state.update_data(tag=callback.data)
+        await callback.message.edit_text('Введите Ваш вопрос')
+        await state.set_state(User_states.fuzzy_process)
 
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -220,6 +230,12 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
         information_panel = f"""Название субъекта: {form_info_list[2]},\nФИО: {form_info_list[3]},\nДолжность: {form_info_list[4]},\nНомер телефона: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
+    elif callback_data == 'registration_db':
+        from main import bot
+        await creating_excel_users()
+        excel = FSInputFile('miac_output.xlsx')
+        await bot.send_document(chat_id=callback.from_user.id,
+                                document=excel)
 
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:

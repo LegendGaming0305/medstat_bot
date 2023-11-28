@@ -114,3 +114,7 @@ async def process_answer(message: types.Message, state: FSMContext):
 @router.message(F.document)
 async def test(message: types.Message):
     print(message.document)
+
+@router.message(F.text.contains('id'))
+async def chat_id_extraction(message: types.Message):
+    print(message.chat.id)

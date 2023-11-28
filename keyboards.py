@@ -154,8 +154,11 @@ class Admin_Keyboards():
         admin_starting_keyboard = InlineKeyboardBuilder()
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
+        registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
 
-        admin_starting_keyboard.add(check_registrations)
+        admin_starting_keyboard.add(check_registrations,
+                                    registration_db)
+        admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
     def reg_process_keyboard(user_id, user_string_id) -> InlineKeyboardBuilder:

@@ -366,9 +366,16 @@ class Database():
                                                      WHERE question_content = $1''', question)
         return user_id
 
-    async def get_question_message_id(self, question_id: int):
+    async def get_question_message_id(self, question_id: int) -> str:
         if self.connection is None:
             await self.create_connection()
 
         message_id = await self.connection.fetchval('''SELECT question_message FROM questions_forms WHERE id = $1''', question_id)
         return message_id
+    
+    async def get_registrated_db(self):
+        if self.connection is None:
+            await self.create_connection()
+
+        miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
+        return miac_users

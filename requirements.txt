@@ -3,3 +3,5 @@ asyncio
 asyncpg
 aiocache
 fuzzywuzzy
+pandas
+openpyxl

@@ -27,9 +27,9 @@ async def process_miac_selection(callback: types.CallbackQuery, state: FSMContex
     elif callback.data.startswith('region'):
         region_id = callback.data.split('_')[-1]
         miac_name = await db.get_miac_information(info_type='miac', miac_id=int(region_id))
-        await state.set_state(User_states.reg_fio)
+        await state.set_state(User_states.reg_organisation)
         await state.update_data(subject=miac_name)
-        await callback.message.edit_text('Введите ваше ФИО строго через пробел')
+        await callback.message.edit_text('Введите название вашего места работы')
 
 @router.callback_query(User_states.fuzzy_process)
 async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
@@ -228,7 +228,7 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         cb_data = callback.data ; cb_data = cb_data.split("&") ; cb_data = cb_data[1].split(":") ; callback_id = int(cb_data[1])
         info_tuple = await db.get_massive_of_values(form_id=callback_id)
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
-        information_panel = f"""Название субъекта: {form_info_list[2]},\nФИО: {form_info_list[3]},\nДолжность: {form_info_list[4]},\nНомер телефона: {form_info_list[5]}"""
+        information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nНомер телефона: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
     elif callback_data == 'registration_db':
         from main import bot
@@ -276,7 +276,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await bot.send_document(chat_id=chat_id, 
                                 document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
     elif callback.data == 'registration':
-        await state.set_state(User_states.reg_fio)
+        await state.set_state(User_states.reg_organisation)
         markup = await User_Keyboards.create_district_buttons()
         await callback.message.edit_text('Выберите Федеральный округ', reply_markup=markup)
     elif callback.data == "make_question":

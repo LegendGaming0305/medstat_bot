@@ -2,7 +2,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 from db_actions import Database
-from additional_functions import fio_handler
 
 db = Database()
 
@@ -186,7 +185,7 @@ class Admin_Keyboards():
         '''
         unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
         generated_keyboard = InlineKeyboardBuilder()
-        buttons_data = [InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))]
+        buttons_data = [InlineKeyboardButton(text=f'Пользователь {registration_forms[i][1]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
         generated_keyboard.add(*[elem for elem in buttons_data])
         generated_keyboard.adjust(3, repeat=True)
 

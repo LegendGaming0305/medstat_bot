@@ -144,16 +144,6 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-def fio_handler(fio: str) -> str:
-    '''
-        Обратка фио для придания ему вида: И.И.Иванов
-    '''
-    try:
-        fio = list(map(lambda x: x.capitalize(), fio.split(" ")))
-        fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
-        return fio
-    except IndexError:
-        return "Некорректное имя"
 
 async def create_questions(specialist_id: int) -> tuple[dict]:
     rows = await db.get_specialits_questions(specialist_id=specialist_id)

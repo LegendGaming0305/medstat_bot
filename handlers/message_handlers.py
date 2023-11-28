@@ -3,6 +3,7 @@ from states import User_states, Specialist_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
 from non_script_files.config import QUESTION_PATTERN
+import asyncio
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
@@ -35,30 +36,26 @@ async def exiting_fuzzy(message: types.Message, state: FSMContext):
     elif "Не нашёл подходящего вопроса" in message.text:
         await question_redirect(message, state)
 
-@router.message(User_states.reg_fio)
+@router.message(User_states.reg_organisation)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
     '''
-    Получение ФИО
+    Получение места работы
     '''
-    await state.update_data(fio=message.text)
+    await state.update_data(organisation=message.text)
     await message.answer('Введите Вашу должность')
     await state.set_state(User_states.reg_post)
 
 @router.message(User_states.reg_post)
-async def process_post_input(message: types.Message, state: FSMContext) -> None:
+async def process_telephone_number_input(message: types.Message, state: FSMContext) -> None:
     '''
     Получение наименования должности
     '''
+    from main import bot
     await state.update_data(post=message.text)
-    await message.answer('Укажите Ваш номер телефона в формате +7 (999) 999-99-99')
-    await state.set_state(User_states.reg_telephone_number)
-
-@router.message(User_states.reg_telephone_number)
-async def process_telephone_number_input(message: types.Message, state: FSMContext) -> None:
-    '''
-    Получение номера телефона
-    '''
-    await state.update_data(telephone_number=message.text)
+    link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+                                          name='Чат координаторов',
+                                          member_limit=1)
+    await message.answer(f'Пройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
     await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
 После чего Вы сможете задать вопрос специалисту''', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await db.add_registration_form(message.from_user.id, await state.get_data())
@@ -118,3 +115,14 @@ async def test(message: types.Message):
 @router.message(F.text.contains('id'))
 async def chat_id_extraction(message: types.Message):
     print(message.chat.id)
+
+@router.message(F.text.contains('#данные'))
+async def sending_information(message: types.Message):
+    from main import bot
+    await bot.send_message(chat_id=869012176, text=f'Новые полученные данные {message.text}')
+
+@router.message(F.new_chat_member)
+async def process_new_member(update: types.ChatMemberUpdated):
+    from main import bot
+    await bot.send_message(chat_id=-1002033917658,
+                           text=f'Добрый день, @{update.from_user.full_name}! В целях качественного и оператиного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b>.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')

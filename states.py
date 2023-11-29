@@ -16,3 +16,4 @@ class Admin_states(StatesGroup):
 class Specialist_states(StatesGroup):
     choosing_question = State()
     answer_question = State()
+    public_choose = State()

@@ -2,7 +2,7 @@ from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import FSInputFile
+from aiogram.types import FSInputFile, InlineKeyboardMarkup
 import json
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
@@ -52,58 +52,9 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
-    '''Выбор вопроса специалистом'''
-
-    # async def question_generation(callback_data: str):
-    #     from additional_functions import cache
-    #     data = await cache.get(int(callback_data))
-    #     information = json.loads(data)
-    #     result = ''
-    #     for key, value in information.items():
-    #         await state.update_data(question=value)
-    #         if key == 'lp_user_id':
-    #             continue
-    #         result += f'{key}: {value}\n'
-
-    #     lp_user_info = await db.get_lp_user_info(lp_user_id=information['lp_user_id'])
-    #     user_name = lp_user_info[0][3] 
-    #     result += f'user_name: {user_name}'
-    #     return information, result
-
-    # if 'question:' in callback.data:
-    #     callback_data = callback.data.split(':')[-1]
-    #     information, result = await question_generation(callback_data=callback_data)
-    #     await state.update_data(question_id=callback_data, user_id=information['lp_user_id'])
-    #     await callback.message.edit_text(result, reply_markup=Specialist_keyboards.question_buttons())
-    # elif callback.data == 'choose_question':
-    #     markup = InlineKeyboardBuilder()
-    #     data = await state.get_data()
-    #     question_id = data['question_id']
-    #     result_check = db.check_question(question_id=question_id)
-    #     if result_check == 'Вопрос взят':
-    #         await callback.message.edit_text('Выберите другой вопрос', reply_markup=Specialist_keyboards.questions_gen())
-    #     else:
-    #         await db.answer_process_report(question_id=int(question_id),
-    #                                  answer='Вопрос взят',
-    #                                  specialist_id=callback.from_user.id)
-    #         await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-    #         await callback.message.answer('Введите свой ответ')
-    #         await state.set_state(Specialist_states.answer_question)
-    # elif callback.data == 'close_question':
-    #     data = await state.get_data()
-    #     await db.answer_process_report(question_id=int(data['question_id']),
-    #                              answer='Закрытие вопроса',
-    #                              specialist_id=callback.from_user.id)
-    #     await callback.message.edit_text('Меню', reply_markup=Specialist_keyboards.questions_gen())
-    # elif callback.data == 'back_to_pool':
-    #     keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
-    #     await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-    #     await state.set_state(Specialist_states.choosing_question)
-    # elif callback.data == 'answer_the_question':
-    #     keyboard = await Specialist_keyboards.create_inline_keyboard(callback.from_user.id)
-    #     await callback.message.edit_text('Выберите вопрос', reply_markup=keyboard)
-    #     await state.set_state(Specialist_states.choosing_question)
-
+    '''
+    Выбор вопроса специалистом
+    '''
     if 'dialogue_history' in callback.data:
         from cache_container import Data_storage
         page_number = 1
@@ -236,6 +187,58 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         excel = FSInputFile('miac_output.xlsx')
         await bot.send_document(chat_id=callback.from_user.id,
                                 document=excel)
+
+@router.callback_query(Specialist_states.public_choose)
+async def process_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+    Обработка выбора публикации
+    '''
+    from main import bot
+    data = await state.get_data()
+    question_id = data['question_id']
+    question_text = data['question']
+    question_text_for_user = question_text.split("\n")
+    answer = data['answer']
+    message_id = data['text_id']
+    if callback.data == 'private_public':
+        '''
+        Обработка для личной переписки
+        '''
+        lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
+        user_id = tuple_of_info[1][1]
+        question_message_id = await db.get_question_message_id(question_id=question_id)
+        await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {answer}', reply_to_message_id=question_message_id)
+        await callback.message.answer('Ответ отправлен в личные сообщения')
+    elif callback.data == 'form_public':
+        '''
+        Обработка отправки в раздел форм
+        '''
+        forms = {'• Специализированные формы (№ 7, 9, 34; Ф. № 10, 36; Ф. № 36 -ПЛ; Ф. № 11, 37; Ф. № 13; Ф. № 15; Ф. № 55, 56; Ф. № 57; Ф. № 61; Ф. № 64 ; Ф. № 30 (в части работы Лабораторной службы)': 27,
+                 '• Ф. № 14, 19, 41, 54, 16-ВН, 1-РБ, 1-Дети (здрав), 32, 232(вкладыш), 53, 70': 25,
+                 '• Ф. № 12, 12-село': 23,
+                 '• ф. № 8, 33, 2-ТБ, 7-ТБ, 8-ТБ, 10-ТБ (туберкулез);': 20,
+                 '• Ф. № 47': 18,
+                 '• Ф. № 14-ДС; Ф. 30 (в части работы СМП) Шляфер С.И.': 16,
+                 '• Ф. № 30 Шелепова Е.А.': 14,
+                 '• Ф. № 30 Тюрина Е.М.': 12,
+                 '• Ф. № 30 Латышова А.А.': 10,
+                 '• Общий раздел': 8,
+                 '• Система МЕДСТАТ': 6,
+                 '• Нормативные документы': 4}
+        form_name = '•' + question_text_for_user[1].split('•')[-1]
+        await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {answer}',
+                               message_thread_id=forms[form_name])
+        await callback.message.answer('Ответ отправлен в раздел форм')
+    elif callback.data == 'open_chat_public':
+        pass
+    elif callback.data == 'end_public':
+        '''
+        Обработка выхода из состояния публикации
+        '''
+        markup = InlineKeyboardBuilder()
+        await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
+        await callback.message.answer('Можете выбирать другие вопросы для ответа')
+        await state.set_state(Specialist_states.choosing_question)
 
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:

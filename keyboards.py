@@ -133,10 +133,8 @@ class Owner_Keyboards():
         owner_starting_keyboard = InlineKeyboardBuilder()
 
         admin_panel = InlineKeyboardButton(text='Админ-панель', callback_data='admin_panel')
-        # tester_panel = InlineKeyboardButton(text='Тестер-панель', callback_data='tester_panel')
-        user_panel = InlineKeyboardButton(text='Юзер-панель', callback_data='user_panel')
         specialist_panel = InlineKeyboardButton(text='Специалист-панель', callback_data='specialist_panel')
-        owner_starting_keyboard.add(admin_panel, user_panel, specialist_panel)
+        owner_starting_keyboard.add(admin_panel, specialist_panel)
         return owner_starting_keyboard
     
     owner_starting_keyboard = main_menu().adjust(1, repeat=True)
@@ -199,26 +197,6 @@ class Admin_Keyboards():
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
-
-    # async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
-    # # from main import db
-    #     questions_keyboard = InlineKeyboardBuilder()
-    #     rows = await db.get_specialits_questions(specialist_id=specialist_id)
-    #     for row in rows:
-    #         question_info = list(row.values())
-        
-    #         data = {'question': question_info[1],
-    #                 'lp_user_id': question_info[2],
-    #                 'form_name': question_info[3]}
-    #         # Переводим данные в json формат
-    #         serialized_data = json.dumps(data)
-    #         # Сохраняем в кэш память
-    #         await cache.set(question_info[0], serialized_data)
-    #         button = InlineKeyboardButton(text=f'Вопрос {question_info[0]}', callback_data=f'question:{question_info[0]}')
-    #         questions_keyboard.add(button)
-    #     questions_keyboard.adjust(3, repeat=True)
-    #     return questions_keyboard.as_markup()
-
     def questions_gen() -> InlineKeyboardBuilder:
         '''
         Создание кнопок вопросов для специалиста
@@ -268,5 +246,17 @@ class Specialist_keyboards():
                 question_keyboard.add(back_to_question)
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
+            
+    def forward_buttons() -> InlineKeyboardBuilder:
+        forward_keyboard = InlineKeyboardBuilder()
+
+        private = InlineKeyboardButton(text='В личные сообщения пользователю', callback_data='private_public')
+        form = InlineKeyboardButton(text='В раздел формы', callback_data='form_public')
+        open_chat = InlineKeyboardButton(text='В открытый канал', callback_data='open_chat_public')
+        end = InlineKeyboardButton(text='Выйти', callback_data='end_public')
+
+        forward_keyboard.add(private, form, open_chat, end)
+        forward_keyboard.adjust(1, repeat=True)
+        return forward_keyboard.as_markup()
             
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

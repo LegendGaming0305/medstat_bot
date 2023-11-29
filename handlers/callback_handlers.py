@@ -57,51 +57,37 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     @execution_count_decorator
     async def sending_process(private: bool = True, chat_id: int = 0, message_type: str = 'message', file_id: int = 0, finished: bool = False):
         from keyboards import BUTTONS_TO_REMOVE
-
-        if finished == True:
-            await state.set_state(Specialist_states.choosing_question)
-            questions = await create_questions(callback.from_user.id)
-            await callback.message.edit_text('Выберите вопрос')
-            message_ids = []
-            for question in questions:
-                lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
-                user_name = lp_user_info[0][3]
-                message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
-                                                        reply_markup=Specialist_keyboards.question_buttons())
-                message_ids.append(message.message_id)
-            await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                        reply_markup=Specialist_keyboards.questions_gen())
-            try:
-                await state.update_data(message_ids=message_ids)
-                return
-            except UnboundLocalError:
-                pass
-        else: pass
-
         await state.set_state(Specialist_states.choosing_question)
         data = await state.get_data()
-        question_id = data['question_id']
-        answer_message_id = data['question_message']
+
+        question_id = data['question_id'] ; answer_message_id = data['question_message']
         question_message_id = await db.get_question_message_id(question_id=question_id)
         question_text = data['question'] ; question_text_for_user = question_text.split("\n")
         lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
-        menu_to_change = data['menu']
-        user_id = tuple_of_info[1][1]
+        menu_to_change = data['menu'] ; user_id = tuple_of_info[1][1]
         form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
         question_text_for_user = question_text.split("\n")
+        
+        if finished == True:
+            await bot.edit_message_text(text=f'<b>Вы успешно ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=answer_message_id)
+            await callback.answer(text='Вы успешно завершили процесс')
+            await callback.message.delete()
+        else: 
+            found_data = (pattern for pattern in BUTTONS_TO_REMOVE for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+            await callback.message.edit_reply_markup(inline_message_id=str(menu_to_change.message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
 
-        found_data = (pattern for pattern in BUTTONS_TO_REMOVE for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-        await callback.message.edit_reply_markup(inline_message_id=str(menu_to_change.message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+            if private == True and message_type == 'message':
+                await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}', reply_to_message_id=question_message_id)
+            elif private == False and message_type == 'message':
+                await bot.send_message(chat_id=chat_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}')
+            elif private == False and message_type == 'document':
+                await bot.send_document(chat_id=chat_id, document=file_id, caption='')
 
-        if private == True and message_type == 'message':
-            await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}', reply_to_message_id=question_message_id)
-        elif private == False and message_type == 'message':
-            await bot.send_message(chat_id=chat_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}')
-        elif private == False and message_type == 'document':
-            await bot.send_document(chat_id=chat_id, document=file_id, caption='')
+            await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=callback.from_user.id, message_id=answer_message_id)
+            await state.set_state(Specialist_states.choosing_publication_destination)
 
-        await bot.edit_message_text(text=f'<b>Вы ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=answer_message_id)
-        await state.set_state(Specialist_states.choosing_publication_destination)
+        return f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}', message_type
+
     
     Data_storage.callback_texts.append(callback.data)
     if callback.data == "private_message":
@@ -110,11 +96,14 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     elif "form_type" in callback.data:
         callback_data = callback.data ; form_info = callback_data.split(":") ; form_info = form_info[1]
         form_info = await db.get_form_by_name(form_name=form_info)
-        channel_id = await db.extract_channel_info(form_name=form_info[1]) ; channel_id = channel_id[6]
-        
-        await sending_process(private=False, chat_id=channel_id, finished=False)
+        channel_id = await db.extract_channel_info(form_name=form_info[1])
+        pub_text, message_type = await sending_process(private=False, chat_id=channel_id[6], finished=False)
         await callback.message.reply(f'Ответ отправлен в канал формы: {form_info[1]}')
-        # await db.publication_process_filling()
+        higher_user_info = db.get_spec_info_by_user_id(user_id=callback.from_user.id)
+        await db.publication_process_filling(channel_id=channel_id[0],
+                                             publication_content=pub_text,
+                                             publication_type=message_type,
+                                             post_suggester=higher_user_info)
     if callback.data == 'finish_state':
         sending_process(finished=True)
         

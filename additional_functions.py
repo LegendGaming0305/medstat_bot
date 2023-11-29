@@ -44,7 +44,7 @@ def access_block_decorator(func):
     async def async_wrapper(quarry_type, state):
         @quarry_definition_decorator
         async def locker(**kwargs):
-            status = await db.get_status(user_id=kwargs["user_id"])
+            status = await db.get_status(user_id=kwargs["user_id"]) if quarry_type or state else ...
 
             match status:
                 case 'Accept':
@@ -89,7 +89,7 @@ def quarry_definition_decorator(func):
                         "chat_id": query_type.message.chat.id,
                         "user_id": query_type.from_user.id,
                         "chat_type": query_type.message.chat.type,
-                        "answer_type": query_type.message,
+                        "answer_type": query_type,
                         "message_id": query_type.message.message_id,
                         "edit_text": query_type.message.edit_text
                         })

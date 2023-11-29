@@ -411,3 +411,11 @@ class Database():
         elif op_channel_sec_id != 0:
             res = await self.connection.fetchrow('''SELECT * FROM channels_directory WHERE channel_id = $1''', op_channel_sec_id)
             return res
+
+    async def get_spec_info_by_user_id(self, user_id: int):
+        if self.connection is None:
+            await self.create_connection()
+        
+        return await self.connection.fetchrow('''SELECT hpu.*, sf.form_id FROM high_priority_users AS hpu
+                                       INNER JOIN specialist_forms AS sf ON sf.specialist_id = hpu.id
+                                       WHERE hpu.user_id = $1''', user_id)

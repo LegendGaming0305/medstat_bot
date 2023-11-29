@@ -102,7 +102,7 @@ async def process_answer(message: types.Message, state: FSMContext):
                              answer=message.text,
                              specialist_id=message.from_user.id)
     await state.set_state(Specialist_states.choosing_publication_destination)
-    publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации:", reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type))
+    publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации. Для того, чтобы выйти из меню нажмите 'Завершить публикацию'. В противном случае вы не сможете отвечать на другие вопросы", reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type))
     await state.update_data(menu=publication_menu)
     Data_storage.callback_texts = []
     

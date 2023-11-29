@@ -282,7 +282,7 @@ class Specialist_keyboards():
             private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
             section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}")
             open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_channel")
-            finish_redirectiong = InlineKeyboardButton(text="Вернуться к вопросам", callback_data="finish_state")
+            finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
             public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong)
             public_kb.adjust(1)
             return public_kb.as_markup()
@@ -292,13 +292,11 @@ class Specialist_keyboards():
                 'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}"),
                 'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_channel")
             }
-            found_patterns = np.array([BUTTONS_TO_REMOVE.get(elem) for elem in found_patterns])
-            keys = np.array([BUTTONS_TO_REMOVE.get(elem) for elem in buttons_dict.keys()])
-            result = keys[keys != found_patterns]
-            result = list(BUTTONS_TO_REMOVE.get(f'{elem}') for elem in result) ; result = list(buttons_dict.get(elem) for elem in result)
+            keys, found_patterns= np.array([BUTTONS_TO_REMOVE.get(elem) for elem in buttons_dict.keys()]), np.array([BUTTONS_TO_REMOVE.get(elem) for elem in found_patterns])
+            result = list(BUTTONS_TO_REMOVE.get(f'{elem}') for elem in keys[found_patterns != keys]) ; result = list(buttons_dict.get(elem) for elem in result)
 
             public_kb.add(*result)
-            finish_redirectiong = InlineKeyboardButton(text="Вернуться к вопросам", callback_data="finish_state")
+            finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
             public_kb.add(finish_redirectiong)
             public_kb.adjust(1)
             return public_kb.as_markup()

@@ -48,12 +48,17 @@ def access_block_decorator(func):
 
             match status:
                 case 'Accept':
-                    # await kwargs["answer_type"].answer(text="Успешный вход")
                     return await func(quarry_type, state)
                 case 'Pending':
                     await kwargs["answer_type"].answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
                 case 'Decline':
                     await kwargs["answer_type"].answer(text="Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу. Свяжитесь с администратором - @tsayushka")
+
+            try:
+                if kwargs['access_restricted'] == True:
+                    await kwargs["answer_type"].answer(text="Вы не можете завершить процесс, не отправив публикацию в один из предложенных каналов или в личный чат пользователя")
+            except Exception:
+                pass
 
         return await locker(quarry_type, state)
     return async_wrapper 
@@ -110,6 +115,7 @@ def user_registration_decorator(func):
             from keyboards import User_Keyboards, Owner_Keyboards, Specialist_keyboards
             prior_user = False
             backing_to_menu = await kwargs["answer_type"].answer("Успешный возврат меню...", reply_markup=general_kb)
+            await state.clear()
         
             async def prior_keyboard_send(key_type: InlineKeyboardBuilder, row: str):
                 nonlocal prior_user
@@ -139,6 +145,29 @@ def user_registration_decorator(func):
         return await registration(query_type, state)
     return async_wrapper
               
+def execution_count_decorator(func):
+    """
+    Как работает этот декоратор:
+    1. Декоратор отсчитывает вызов той или иной функции
+    2. Он возвращает количество вызовов
+    3. Если количество вызовов = 1, а finished == True, то выходит сообщение о том, 
+    что необходимо отправить публикацию как минимум один раз, для продолжения сессии
+    4. Декоратор так же сохраняет все пройденные коллбэки для работы с кнопками клавиатуры;
+    """
+    async_wrapper_counter = 0
+    async def async_wrapper(*args, **kwargs):
+        nonlocal async_wrapper_counter
+        async_wrapper_counter += 1
+        try:
+            if async_wrapper_counter == 1 and kwargs['finished'] == True:
+                @access_block_decorator
+                def locker_raise(access_restricted = True):
+                    ...
+                locker_raise(access_restricted = True)
+        except KeyError: pass
+        return await func(*args, **kwargs)
+    return async_wrapper
+
 def json_reader(path: str):
     '''Чтение json-файла и возврат значения'''
     with open(path, 'r', encoding="utf-8") as j_file:

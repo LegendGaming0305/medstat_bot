@@ -17,3 +17,4 @@ class Admin_states(StatesGroup):
 class Specialist_states(StatesGroup):
     choosing_question = State()
     answer_question = State()
+    choosing_publication_destination = State()

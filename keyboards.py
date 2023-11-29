@@ -1,5 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+import numpy as np
 
 from db_actions import Database
 from additional_functions import fio_handler
@@ -8,6 +9,7 @@ db = Database()
 
 back_to_menu = [[KeyboardButton(text="Возврат в главное меню")]]
 general_kb = ReplyKeyboardMarkup(keyboard=back_to_menu, resize_keyboard=True)
+BUTTONS_TO_REMOVE = {'private':0, 'form':1, 'open':2, '0':'private', '1':'form', '2':'open'}
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
@@ -267,4 +269,44 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
+    def publication_buttons(form_type: str, found_patterns: tuple = ()) -> InlineKeyboardBuilder:
+        from keyboards import BUTTONS_TO_REMOVE
+        '''
+        Данная функция принимает в себя обязательный аргумент form_type, за который закрепляется имя формы,
+        а так же необязательные позиционные аргументы *args что представляют из себя 
+        кнопки, которые необходимо выключить.
+        Планируется, что в 
+        '''
+        public_kb = InlineKeyboardBuilder()
+        if found_patterns == ():
+            private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
+            section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}")
+            open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_channel")
+            finish_redirectiong = InlineKeyboardButton(text="Вернуться к вопросам", callback_data="finish_state")
+            public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong)
+            public_kb.adjust(1)
+            return public_kb.as_markup()
+        else:
+            buttons_dict = {
+                'private': InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message"),
+                'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}"),
+                'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_channel")
+            }
+            found_patterns = np.array([BUTTONS_TO_REMOVE.get(elem) for elem in found_patterns])
+            keys = np.array([BUTTONS_TO_REMOVE.get(elem) for elem in buttons_dict.keys()])
+            result = keys[keys != found_patterns]
+            result = list(BUTTONS_TO_REMOVE.get(f'{elem}') for elem in result) ; result = list(buttons_dict.get(elem) for elem in result)
+
+            public_kb.add(*result)
+            finish_redirectiong = InlineKeyboardButton(text="Вернуться к вопросам", callback_data="finish_state")
+            public_kb.add(finish_redirectiong)
+            public_kb.adjust(1)
+            return public_kb.as_markup()
+
+
+        
+
+        
+
+
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

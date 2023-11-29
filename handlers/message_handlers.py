@@ -8,7 +8,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
 import json
-from aiogram.types import ReplyKeyboardRemove
 
 router = Router()
 
@@ -94,23 +93,19 @@ async def process_question_input(message: types.Message, state: FSMContext) -> N
 @router.message(Specialist_states.answer_question)
 async def process_answer(message: types.Message, state: FSMContext):
     from main import bot
+    from cache_container import Data_storage
+    await state.update_data(question_answer=message.text)
     data = await state.get_data()
-    question_id = data['question_id']
-    answer_message_id = data['question_message']
-    question_message_id = await db.get_question_message_id(question_id=question_id)
-    question_text = data['question']
-    lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
-    user_id = tuple_of_info[1][1]
-    question_text_for_user = question_text.split("\n")
+    question_id = data['question_id'] ; question_text = data['question'] ; question_text_for_user = question_text.split("\n")
+    form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)
-    await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {message.text}', reply_to_message_id=question_message_id)
-    await message.reply('Ответ отправлен')
-    await state.set_state(Specialist_states.choosing_question)
-    await bot.edit_message_text(text=f'<b>Вы ответили на этот вопрос</b>\n{question_text}', chat_id=message.from_user.id,
-                                message_id=answer_message_id)
-
+    await state.set_state(Specialist_states.choosing_publication_destination)
+    publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации:", reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type))
+    await state.update_data(menu=publication_menu)
+    Data_storage.callback_texts = []
+    
 @router.message(F.document)
 async def test(message: types.Message):
     print(message.document)

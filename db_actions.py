@@ -5,20 +5,8 @@ from asyncpg.exceptions import DuplicateDatabaseError
 class Database():
     def __init__(self):
         self.connection = None
-        # self.create_database()
         self.create_connection()
         self.create_table()
-
-    # async def create_database(self) -> None:
-    #     '''
-    #     Создание БД если ее не существует еще
-    #     '''
-    #     conn = await asyncpg.connect(database='template1', user='postgres', password='!qwe@123#')
-    #     try:
-    #         await conn.execute('CREATE DATABASE telegram OWNER postgres')
-    #     except DuplicateDatabaseError:
-    #         pass
-    #     await conn.close()
 
     async def create_connection(self) -> None:
         '''
@@ -36,9 +24,10 @@ class Database():
         await self.connection.execute('''
                             DO $$ BEGIN
                                 CREATE TYPE STATE AS ENUM ('Decline', 'Accept', 'Pending');
-                                CREATE TYPE LOWER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER');
-                                CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'TESTER', 'OWNER', 'ADMIN', 'SPECIALIST');
-                                CREATE TYPE CHAT_TYPE AS ENUM ('Personal', 'Group', 'Section');
+                                CREATE TYPE LOWER_PRIOR AS ENUM ('USER', 'OWNER');
+                                CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'OWNER', 'ADMIN', 'SPECIALIST');
+                                CREATE TYPE CHAT_TYPE AS ENUM ('Group', 'Section', 'Channel', 'Chat');
+                                CREATE TYPE ACCESS_LEVEL AS ENUM ('General', 'Private', 'Authorized');
                             EXCEPTION
                                 WHEN duplicate_object THEN null;
                             END $$;''')
@@ -120,6 +109,27 @@ class Database():
                                         FOREIGN KEY (federal_district_id) REFERENCES federal_district (id),
                                         FOREIGN KEY (region_id) REFERENCES regions (id),
                                         PRIMARY KEY (federal_district_id, region_id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS channels_directory (
+                                      id SERIAL PRIMARY KEY,
+                                      form_id INTEGER CHECK (form_id > 0) DEFAULT NULL,
+                                      FOREIGN KEY (form_id) REFERENCES form_types (id),
+                                      channel_privacy_type ACCESS_LEVEL,
+                                      channel_type CHAT_TYPE,
+                                      channel_link VARCHAR(150) DEFAULT NULL,
+                                      channel_name VARCHAR(150) NOT NULL,
+                                      channel_id BIGINT NOT NULL)''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS publication_process (
+                                      id SERIAL PRIMARY KEY,
+                                      channel_id INTEGER CHECK (channel_id > 0) NOT NULL,
+                                      FOREIGN KEY (channel_id) REFERENCES channels_directory (id),
+                                      publication_content TEXT NOT NULL,
+                                      publication_type VARCHAR(40) NOT NULL,
+                                      publication_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      publication_status VARCHAR(40) DEFAULT NULL,
+                                      post_suggester INTEGER CHECK (post_suggester > 0) DEFAULT NULL,
+                                      FOREIGN KEY (post_suggester) REFERENCES high_priority_users (id),
+                                      process_regulator INTEGER CHECK (process_regulator > 0) DEFAULT NULL,
+                                      FOREIGN KEY (process_regulator) REFERENCES high_priority_users (id))''')
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -358,7 +368,6 @@ class Database():
                                                      WHERE question_content = $1''', question)
             return question_id
 
-    
     async def get_user_id(self, question: str) -> int:
         if self.connection is None:
             await self.create_connection()
@@ -372,3 +381,33 @@ class Database():
 
         message_id = await self.connection.fetchval('''SELECT question_message FROM questions_forms WHERE id = $1''', question_id)
         return message_id
+    
+    async def get_form_by_name(self, form_name: str):
+        if self.connection is None:
+            await self.create_connection()
+        
+        form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+                                                JOIN specialist_forms AS sf ON ft.id = sf.form_id
+                                                WHERE form_name = $1''', form_name)
+        return form_info    
+
+    async def publication_process_filling(self, update: bool = False, **kwargs):
+        if self.connection is None:
+            await self.create_connection()
+        
+        if update == False:
+            await self.connection.execute('''INSERT INTO publication_process (channel_id, publication_content, publication_type, post_suggester)
+                                      VALUES $1, $2, $3, $4''', kwargs['channel_id'], kwargs['publication_content'], kwargs['publication_type'], kwargs['post_suggester'])
+        else:
+            await self.connection.execute('''UPDATE publication_process SET publication_status = $1, process_regulator = 4 WHERE id == $2''')
+
+    async def extract_channel_info(self, form_name: str = None, op_channel_sec_id = 0):
+        if self.connection is None:
+            await self.create_connection()
+        
+        if form_name != None:
+            res = await self.connection.fetchrow('''SELECT cd.* FROM channels_directory AS cd INNER JOIN form_types AS ft ON cd.form_id = ft.id WHERE ft.form_name = $1''', form_name)
+            return res
+        elif op_channel_sec_id != 0:
+            res = await self.connection.fetchrow('''SELECT * FROM channels_directory WHERE channel_id = $1''', op_channel_sec_id)
+            return res

@@ -35,9 +35,8 @@ class Database():
                                     id SERIAL PRIMARY KEY,
                                     user_id BIGINT CHECK (user_id > 0) NOT NULL, 
                                     subject_name VARCHAR(100),
-                                    user_fio VARCHAR(50),
                                     post_name VARCHAR(100),
-                                    telephone_number VARCHAR(20),
+                                    organisation VARCHAR(400),
                                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS high_priority_users(
                                     id SERIAL PRIMARY KEY,
@@ -48,7 +47,6 @@ class Database():
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS low_priority_users(
                                     id SERIAL PRIMARY KEY,
                                     user_id BIGINT CHECK (user_id > 0) NOT NULL,
-                                    telegramm_name VARCHAR(50),
                                     privilege_type LOWER_PRIOR DEFAULT 'USER',
                                     registration_process_id INTEGER CHECK (registration_process_id > 0) NOT NULL,
                                     FOREIGN KEY (registration_process_id) REFERENCES registration_process (id),
@@ -136,9 +134,8 @@ class Database():
         Внесение данных пользователя из формы регистрации в registration_process
         :params: 
         subject - субъект МИАЦ
-        fio - ФИО сотрудника
         post - должность сотрудника
-        telephone_number - номер телефона
+        organisation - организация
         '''
         if self.connection is None:
             await self.create_connection()
@@ -146,8 +143,8 @@ class Database():
         # test_subj = "Test"
 
         await self.connection.execute('''INSERT INTO registration_process 
-                                           (user_id, subject_name, user_fio, post_name, telephone_number)
-                                           VALUES ($1, $2, $3, $4, $5)''', args[0], args[1]['subject'], args[1]['fio'], args[1]['post'], args[1]['telephone_number'])
+                                           (user_id, subject_name, post_name, organisation)
+                                           VALUES ($1, $2, $3, $4)''', args[0], args[1]['subject'], args[1]['post'], args[1]['organisation'])
 
     async def add_higher_users(self) -> None:
         from non_script_files.config import PRIORITY_LIST
@@ -185,13 +182,13 @@ class Database():
         if self.connection is None:
             await self.create_connection()
 
-        cursor = await self.connection.fetchrow('''SELECT id, user_fio, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
+        cursor = await self.connection.fetchrow('''SELECT id, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
         user_check = await self.connection.fetchrow('''SELECT * FROM low_priority_users WHERE user_id = ($1)''', args[0])
 
         if user_check:
             await self.connection.execute('''UPDATE low_priority_users SET registration_process_id = ($1), registration_state = 'Pending' WHERE user_id = ($2)''', cursor[0], args[0])
         else:
-            await self.connection.execute('''INSERT INTO low_priority_users (user_id, telegramm_name, registration_process_id) VALUES ($1, $2, $3)''', args[0], args[1], cursor[0])
+            await self.connection.execute('''INSERT INTO low_priority_users (user_id, registration_process_id) VALUES ($1, $2)''', args[0], cursor[0])
 
     async def get_unregistered(self) -> tuple:
         '''
@@ -375,7 +372,7 @@ class Database():
                                                      WHERE question_content = $1''', question)
         return user_id
 
-    async def get_question_message_id(self, question_id: int):
+    async def get_question_message_id(self, question_id: int) -> str:
         if self.connection is None:
             await self.create_connection()
 
@@ -419,3 +416,9 @@ class Database():
         return await self.connection.fetchrow('''SELECT hpu.*, sf.form_id FROM high_priority_users AS hpu
                                        INNER JOIN specialist_forms AS sf ON sf.specialist_id = hpu.id
                                        WHERE hpu.user_id = $1''', user_id)
+    async def get_registrated_db(self):
+        if self.connection is None:
+            await self.create_connection()
+
+        miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
+        return miac_users

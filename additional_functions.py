@@ -6,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from fuzzywuzzy import fuzz
 from aiogram.fsm.context import FSMContext
 from aiogram import types
-import asyncio
+import pandas as pd
 
 from db_actions import Database
 
@@ -173,16 +173,6 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-def fio_handler(fio: str) -> str:
-    '''
-        Обратка фио для придания ему вида: И.И.Иванов
-    '''
-    try:
-        fio = list(map(lambda x: x.capitalize(), fio.split(" ")))
-        fio = f"{fio[0][0]}. " + f"{fio[1][0]}. " + fio[2]
-        return fio
-    except IndexError:
-        return "Некорректное имя"
 
 async def create_questions(specialist_id: int) -> tuple[dict]:
     rows = await db.get_specialits_questions(specialist_id=specialist_id)
@@ -261,3 +251,13 @@ async def question_redirect(message: types.Message, state: FSMContext):
     await message.answer('Ваш вопрос передан')
     await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await state.clear()
+
+async def creating_excel_users() -> None:
+    '''
+    Создание excel файла с данными по зарегистрированным пользователям
+    '''
+    from main import db
+    df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 'ФИО', 
+                                                              'Должность', 'Номер телефона', 'Дата регистрации'])
+    df_output = df.loc[:, ['Наименование субъекта', 'ФИО', 'Должность', 'Номер телефона', 'Дата регистрации']]
+    df_output.to_excel('miac_output.xlsx')

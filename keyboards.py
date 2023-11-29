@@ -3,7 +3,6 @@ from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardBut
 import numpy as np
 
 from db_actions import Database
-from additional_functions import fio_handler
 
 db = Database()
 
@@ -136,10 +135,8 @@ class Owner_Keyboards():
         owner_starting_keyboard = InlineKeyboardBuilder()
 
         admin_panel = InlineKeyboardButton(text='Админ-панель', callback_data='admin_panel')
-        # tester_panel = InlineKeyboardButton(text='Тестер-панель', callback_data='tester_panel')
-        user_panel = InlineKeyboardButton(text='Юзер-панель', callback_data='user_panel')
         specialist_panel = InlineKeyboardButton(text='Специалист-панель', callback_data='specialist_panel')
-        owner_starting_keyboard.add(admin_panel, user_panel, specialist_panel)
+        owner_starting_keyboard.add(admin_panel, specialist_panel)
         return owner_starting_keyboard
     
     owner_starting_keyboard = main_menu().adjust(1, repeat=True)
@@ -156,8 +153,11 @@ class Admin_Keyboards():
         admin_starting_keyboard = InlineKeyboardBuilder()
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
+        registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
 
-        admin_starting_keyboard.add(check_registrations)
+        admin_starting_keyboard.add(check_registrations,
+                                    registration_db)
+        admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
     def reg_process_keyboard(user_id, user_string_id) -> InlineKeyboardBuilder:
@@ -185,7 +185,7 @@ class Admin_Keyboards():
         '''
         unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
         generated_keyboard = InlineKeyboardBuilder()
-        buttons_data = [InlineKeyboardButton(text=fio_handler(registration_forms[i][3]), callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][6]}") for i in range(len(registration_forms))]
+        buttons_data = [InlineKeyboardButton(text=f'Пользователь {registration_forms[i][1]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
         generated_keyboard.add(*[elem for elem in buttons_data])
         generated_keyboard.adjust(3, repeat=True)
 
@@ -199,26 +199,6 @@ class Admin_Keyboards():
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
-
-    # async def create_inline_keyboard(specialist_id: int) -> InlineKeyboardBuilder:
-    # # from main import db
-    #     questions_keyboard = InlineKeyboardBuilder()
-    #     rows = await db.get_specialits_questions(specialist_id=specialist_id)
-    #     for row in rows:
-    #         question_info = list(row.values())
-        
-    #         data = {'question': question_info[1],
-    #                 'lp_user_id': question_info[2],
-    #                 'form_name': question_info[3]}
-    #         # Переводим данные в json формат
-    #         serialized_data = json.dumps(data)
-    #         # Сохраняем в кэш память
-    #         await cache.set(question_info[0], serialized_data)
-    #         button = InlineKeyboardButton(text=f'Вопрос {question_info[0]}', callback_data=f'question:{question_info[0]}')
-    #         questions_keyboard.add(button)
-    #     questions_keyboard.adjust(3, repeat=True)
-    #     return questions_keyboard.as_markup()
-
     def questions_gen() -> InlineKeyboardBuilder:
         '''
         Создание кнопок вопросов для специалиста

@@ -111,6 +111,10 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
 async def test(message: types.Message):
     print(message.document)
 
+@router.channel_post(F.text.contains('id'))
+async def channelt_id_extraction(post: types.Message):
+    print(post)
+
 @router.message(F.text.contains('id'))
 async def chat_id_extraction(message: types.Message):
     print(message.chat.id)
@@ -131,4 +135,4 @@ async def process_new_member(update: types.ChatMemberUpdated) -> None:
     '''
     from main import bot
     await bot.send_message(chat_id=-1002033917658,
-                           text=f'Добрый день, @{update.from_user.full_name}! В целях качественного и оператиного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b>.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')
+                           text=f'Добрый день, @{update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')

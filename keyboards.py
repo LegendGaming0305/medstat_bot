@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 
 from db_actions import Database
 
@@ -70,7 +70,7 @@ class User_Keyboards():
         
         return section_key.adjust(1, repeat=True)
 
-    async def create_district_buttons() -> InlineKeyboardBuilder:
+    async def create_district_buttons() -> InlineKeyboardMarkup:
         '''
         Создание клавиатуры для выбора Федерального округа
         '''
@@ -86,7 +86,7 @@ class User_Keyboards():
         district_keyboard.adjust(1, repeat=True)
         return district_keyboard.as_markup()
     
-    async def create_regions_buttons(district_id: int) -> InlineKeyboardBuilder:
+    async def create_regions_buttons(district_id: int) -> InlineKeyboardMarkup:
         region_keyboard = InlineKeyboardBuilder()
         from main import db
         result = await db.get_miac_information(info_type='region', district_id=district_id)
@@ -143,7 +143,7 @@ class Owner_Keyboards():
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 class Admin_Keyboards():
 
-    def main_menu() -> InlineKeyboardBuilder:
+    def main_menu() -> InlineKeyboardMarkup:
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
@@ -152,9 +152,11 @@ class Admin_Keyboards():
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
         registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
+        publications = InlineKeyboardButton(text='Проверить публикации', callback_data='publications')
 
         admin_starting_keyboard.add(check_registrations,
-                                    registration_db)
+                                    registration_db,
+                                    publications)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
@@ -189,6 +191,20 @@ class Admin_Keyboards():
 
         return generated_keyboard
     
+    def post_publication() -> InlineKeyboardMarkup:
+        '''
+        Клавиатура для выбора публикации в открытом канале
+        '''
+        publication_keyboard = InlineKeyboardBuilder()
+
+        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data='accept_post')
+        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data='decline_post')
+
+        publication_keyboard.add(accept_post, decline_post)
+        publication_keyboard.adjust(2)
+
+        return publication_keyboard.as_markup()
+    
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
@@ -197,7 +213,7 @@ class Admin_Keyboards():
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
-    def questions_gen() -> InlineKeyboardBuilder:
+    def questions_gen() -> InlineKeyboardMarkup:
         '''
         Создание кнопок вопросов для специалиста
         '''
@@ -209,7 +225,7 @@ class Specialist_keyboards():
         specialist_starting_keyboard.adjust(1)
         return specialist_starting_keyboard.as_markup()
     
-    def question_buttons(condition: str = None) -> InlineKeyboardBuilder:
+    def question_buttons(condition: str = None) -> InlineKeyboardMarkup:
         '''
         Создание кнопок для взаимодействия с вопросом
         '''
@@ -247,7 +263,7 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
-    def forward_buttons() -> InlineKeyboardBuilder:
+    def forward_buttons() -> InlineKeyboardMarkup:
         forward_keyboard = InlineKeyboardBuilder()
 
         private = InlineKeyboardButton(text='В личные сообщения пользователю', callback_data='private_public')

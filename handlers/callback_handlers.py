@@ -82,7 +82,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         message_ids = []
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
-            user_name = lp_user_info[0][3]
+            user_name = lp_user_info[0][1]
             message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
@@ -187,6 +187,29 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         excel = FSInputFile('miac_output.xlsx')
         await bot.send_document(chat_id=callback.from_user.id,
                                 document=excel)
+    elif callback_data == 'publications':
+        publications = await db.get_posts_to_public()
+        for publication in publications:
+            await callback.message.answer(publication['publication_content'], reply_markup=Admin_Keyboards.post_publication())
+        await state.set_state(Admin_states.post_publication)
+
+@router.callback_query(Admin_states.post_publication)
+async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+    Обработка публикации в открытом канале
+    '''
+    from main import bot
+    if callback.data == 'accept_post':
+        await bot.send_message(chat_id=-1001930879729, text=callback.message.html_text)
+        await callback.message.edit_text(text=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
+        await db.update_publication_status(publication_content=callback.message.html_text, 
+                                           publication_status='Accept',
+                                           user_id=callback.from_user.id)
+    elif callback.data == 'decline_post':
+        await callback.message.edit_text(text=f'<b>Вы отклонили этот пост</b>\n{callback.message.html_text}')
+        await db.update_publication_status(publication_content=callback.message.html_text, 
+                                           publication_status='Decline',
+                                           user_id=callback.from_user.id)
 
 @router.callback_query(Specialist_states.public_choose)
 async def process_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -230,7 +253,9 @@ async def process_publication(callback: types.CallbackQuery, state: FSMContext) 
                                message_thread_id=forms[form_name])
         await callback.message.answer('Ответ отправлен в раздел форм')
     elif callback.data == 'open_chat_public':
-        pass
+        post_content = f'{question_text_for_user[1]}\n{question_text_for_user[2]}\n<b>Ответ:</b> {answer}'
+        await db.add_suggestion_to_post(post_content=post_content, post_suggestor=callback.from_user.id)
+        await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
     elif callback.data == 'end_public':
         '''
         Обработка выхода из состояния публикации

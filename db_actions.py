@@ -1,5 +1,6 @@
 import asyncpg
 from asyncpg.exceptions import DuplicateDatabaseError
+from asyncpg import Record
 
 
 class Database():
@@ -118,6 +119,16 @@ class Database():
                                         FOREIGN KEY (federal_district_id) REFERENCES federal_district (id),
                                         FOREIGN KEY (region_id) REFERENCES regions (id),
                                         PRIMARY KEY (federal_district_id, region_id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS publication_process (
+                                      id SERIAL PRIMARY KEY,
+                                      publication_content TEXT,
+                                      publication_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      publication_status STATE DEFAULT 'Pending',
+                                      post_suggester BIGINT CHECK (post_suggester > 0) NOT NULL,
+                                      post_regulator BIGINT CHECK (post_regulator > 0),
+                                      FOREIGN KEY (post_suggester) REFERENCES high_priority_users (id),
+                                      FOREIGN KEY (post_regulator) REFERENCES high_priority_users (id)
+        )''')
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -376,3 +387,40 @@ class Database():
 
         miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
         return miac_users
+    
+    async def add_suggestion_to_post(self, post_content: str, post_suggestor: int) -> None:
+        '''
+        Добавление данных для поста публикации в открытый канал
+        '''
+        if self.connection is None:
+            await self.create_connection()
+
+        await self.connection.execute('''INSERT INTO publication_process (publication_content, post_suggester)
+                                      SELECT $1, hp.id
+                                      FROM high_priority_users hp
+                                      WHERE $2 = hp.user_id''', post_content, post_suggestor)
+
+    async def get_posts_to_public(self) -> list[Record]:
+        '''
+        Получение данных запроса на публикацию
+        '''
+        if self.connection is None:
+            await self.create_connection()
+
+        result = await self.connection.fetch("""SELECT * FROM publication_process
+                                             WHERE publication_status = 'Pending'""")
+        
+        return result
+    
+    async def update_publication_status(self, publication_content: str, publication_status: str, user_id: int) -> None:
+        '''
+        Обновление статуса публикации и столбца с данным о принявшем решение
+        '''
+        if self.connection is None:
+            await self.create_connection()
+
+        await self.connection.execute("""UPDATE publication_process 
+                                      SET publication_status = $1, post_regulator = hp.id
+                                      FROM high_priority_users hp
+                                      WHERE publication_content = $2 AND hp.user_id = $3""",
+                                      publication_status, publication_content, user_id)

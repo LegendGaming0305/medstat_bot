@@ -10,8 +10,8 @@ class User_states(StatesGroup):
     fuzzy_process = State()
 
 class Admin_states(StatesGroup):
-    registration_claim = State()
     registration_process = State()
+    post_publication = State()
     
 class Specialist_states(StatesGroup):
     choosing_question = State()

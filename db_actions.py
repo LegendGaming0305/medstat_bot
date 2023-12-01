@@ -424,3 +424,12 @@ class Database():
                                       FROM high_priority_users hp
                                       WHERE publication_content = $2 AND hp.user_id = $3""",
                                       publication_status, publication_content, user_id)
+        
+
+    async def get_registration_status(self, user_id: int) -> str:
+        if self.connection is None:
+            await self.create_connection()
+
+        status = await self.connection.fetchval('''SELECT registration_state FROM low_priority_users
+                                                WHERE user_id = $1''', user_id)
+        return status

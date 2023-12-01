@@ -25,19 +25,24 @@ class User_Keyboards():
         method_recommendations_button = InlineKeyboardButton(text='Методические рекомендации', callback_data='method_recommendations')
         registration_button = InlineKeyboardButton(text='Регистрация', callback_data='registration')
         make_question_button = InlineKeyboardButton(text='Задать вопрос', callback_data='make_question')
+        open_chat_button = InlineKeyboardButton(text='Открытый канал', callback_data='link_open_chat')
+        razdel_chat_button = InlineKeyboardButton(text='Канал раздела форм', callback_data='link_razdel_chat')
         
         if filled_form == False:
             user_starting_keyboard.add(npa_button, 
                         medstat_button, 
-                        statistic_button, 
+                        statistic_button,
+                        open_chat_button, 
                         method_recommendations_button, 
                         registration_button)
         else:
             user_starting_keyboard.add(npa_button, 
                         medstat_button, 
-                        statistic_button, 
+                        statistic_button,
+                        open_chat_button, 
                         method_recommendations_button, 
-                        make_question_button)
+                        make_question_button,
+                        razdel_chat_button)
         
         return user_starting_keyboard.adjust(1, repeat=True)
     

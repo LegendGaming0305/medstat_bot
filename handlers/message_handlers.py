@@ -126,13 +126,13 @@ async def sending_information(message: types.Message) -> None:
     Отправка данных админу из чата координаторов
     '''
     from main import bot
-    await bot.send_message(chat_id=869012176, text=f'Новые полученные данные {message.text}')
+    await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные {message.text}')
 
-@router.message(F.new_chat_member)
+@router.message(F.new_chat_member & F.chat.id == -1002033917658)
 async def process_new_member(update: types.ChatMemberUpdated) -> None:
     '''
     Отправка приветственного сообщения при входе пользователя в чат
     '''
     from main import bot
     await bot.send_message(chat_id=-1002033917658,
-                           text=f'Добрый день, @{update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')
+                           text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')

@@ -315,6 +315,13 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'specialist_panel':
         await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.questions_gen())
         await state.set_state(Specialist_states.choosing_question)
-    elif callback.data == 'user_panel':
-        pass
+    elif callback.data == 'link_open_chat':
+        await callback.message.answer('Ссылка на открытый канал - https://t.me/open_chat_medstat')
+    elif callback.data == 'link_razdel_chat':
+        status = await db.get_registration_status(user_id=callback.from_user.id)
+        if status == 'Accept':
+            await callback.message.answer('Ссылка на канал раздела форм - https://t.me/+cNQvBD_FWpQxZWRi')
+        else:
+            await callback.message.answer('Ожидайте одобрения вашей заявки чтобы получить ссылку на канал')
+
     

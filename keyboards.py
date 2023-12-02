@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 import numpy as np
 
 from db_actions import Database
@@ -8,7 +8,7 @@ db = Database()
 
 back_to_menu = [[KeyboardButton(text="Возврат в главное меню")]]
 general_kb = ReplyKeyboardMarkup(keyboard=back_to_menu, resize_keyboard=True)
-BUTTONS_TO_REMOVE = {'private':0, 'form':1, 'open':2, '0':'private', '1':'form', '2':'open'}
+BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2, '0':'private', '1':'form', '2':'open'}
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
@@ -27,19 +27,24 @@ class User_Keyboards():
         method_recommendations_button = InlineKeyboardButton(text='Методические рекомендации', callback_data='method_recommendations')
         registration_button = InlineKeyboardButton(text='Регистрация', callback_data='registration')
         make_question_button = InlineKeyboardButton(text='Задать вопрос', callback_data='make_question')
+        open_chat_button = InlineKeyboardButton(text='Открытый канал', callback_data='link_open_chat')
+        razdel_chat_button = InlineKeyboardButton(text='Канал раздела форм', callback_data='link_razdel_chat')
         
         if filled_form == False:
             user_starting_keyboard.add(npa_button, 
                         medstat_button, 
-                        statistic_button, 
+                        statistic_button,
+                        open_chat_button, 
                         method_recommendations_button, 
                         registration_button)
         else:
             user_starting_keyboard.add(npa_button, 
                         medstat_button, 
-                        statistic_button, 
+                        statistic_button,
+                        open_chat_button, 
                         method_recommendations_button, 
-                        make_question_button)
+                        make_question_button,
+                        razdel_chat_button)
         
         return user_starting_keyboard.adjust(1, repeat=True)
     
@@ -72,7 +77,7 @@ class User_Keyboards():
         
         return section_key.adjust(1, repeat=True)
 
-    async def create_district_buttons() -> InlineKeyboardBuilder:
+    async def create_district_buttons() -> InlineKeyboardMarkup:
         '''
         Создание клавиатуры для выбора Федерального округа
         '''
@@ -88,7 +93,7 @@ class User_Keyboards():
         district_keyboard.adjust(1, repeat=True)
         return district_keyboard.as_markup()
     
-    async def create_regions_buttons(district_id: int) -> InlineKeyboardBuilder:
+    async def create_regions_buttons(district_id: int) -> InlineKeyboardMarkup:
         region_keyboard = InlineKeyboardBuilder()
         from main import db
         result = await db.get_miac_information(info_type='region', district_id=district_id)
@@ -145,7 +150,7 @@ class Owner_Keyboards():
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 class Admin_Keyboards():
 
-    def main_menu() -> InlineKeyboardBuilder:
+    def main_menu() -> InlineKeyboardMarkup:
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
@@ -154,9 +159,11 @@ class Admin_Keyboards():
 
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
         registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
+        publications = InlineKeyboardButton(text='Проверить публикации', callback_data='publications')
 
         admin_starting_keyboard.add(check_registrations,
-                                    registration_db)
+                                    registration_db,
+                                    publications)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
@@ -191,6 +198,20 @@ class Admin_Keyboards():
 
         return generated_keyboard
     
+    def post_publication() -> InlineKeyboardMarkup:
+        '''
+        Клавиатура для выбора публикации в открытом канале
+        '''
+        publication_keyboard = InlineKeyboardBuilder()
+
+        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data='accept_post')
+        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data='decline_post')
+
+        publication_keyboard.add(accept_post, decline_post)
+        publication_keyboard.adjust(2)
+
+        return publication_keyboard.as_markup()
+    
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
@@ -199,7 +220,8 @@ class Admin_Keyboards():
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
-    def questions_gen() -> InlineKeyboardBuilder:
+    
+    def questions_gen() -> InlineKeyboardMarkup:
         '''
         Создание кнопок вопросов для специалиста
         '''
@@ -211,7 +233,7 @@ class Specialist_keyboards():
         specialist_starting_keyboard.adjust(1)
         return specialist_starting_keyboard.as_markup()
     
-    def question_buttons(condition: str = None) -> InlineKeyboardBuilder:
+    def question_buttons(condition: str = None) -> InlineKeyboardMarkup:
         '''
         Создание кнопок для взаимодействия с вопросом
         '''
@@ -250,7 +272,7 @@ class Specialist_keyboards():
                 return question_keyboard.as_markup()
             
     def publication_buttons(form_type: str, found_patterns: tuple = ()) -> InlineKeyboardBuilder:
-        from keyboards import BUTTONS_TO_REMOVE
+        from keyboards import BUTTONS_TO_NUMBER
         '''
         Данная функция принимает в себя обязательный аргумент form_type, за который закрепляется имя формы,
         а так же необязательные позиционные аргументы *args что представляют из себя 
@@ -261,30 +283,38 @@ class Specialist_keyboards():
         if found_patterns == ():
             private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
             section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}")
-            open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_channel")
+            open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
             finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
             public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong)
             public_kb.adjust(1)
             return public_kb.as_markup()
         else:
-            buttons_dict = {
+
+            BUTTONS_DICT = {
                 'private': InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message"),
                 'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}"),
-                'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_channel")
+                'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
             }
-            keys, found_patterns= np.array([BUTTONS_TO_REMOVE.get(elem) for elem in buttons_dict.keys()]), np.array([BUTTONS_TO_REMOVE.get(elem) for elem in found_patterns])
-            result = list(BUTTONS_TO_REMOVE.get(f'{elem}') for elem in keys[found_patterns != keys]) ; result = list(buttons_dict.get(elem) for elem in result)
 
-            public_kb.add(*result)
-            finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
-            public_kb.add(finish_redirectiong)
+            keys, excluded_indices = np.array(list(BUTTONS_DICT.keys())), np.array([BUTTONS_TO_NUMBER.get(elem) for elem in found_patterns])
+            mask = np.ones(len(keys), dtype=bool)
+            mask[excluded_indices] = False
+            result = list(BUTTONS_DICT.get(elem) for elem in keys[mask])
+            public_kb.add(*result, InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
             public_kb.adjust(1)
             return public_kb.as_markup()
-
-
         
-
+    def forward_buttons() -> InlineKeyboardMarkup:
+        forward_keyboard = InlineKeyboardBuilder()
         
+        private = InlineKeyboardButton(text='В личные сообщения пользователю', callback_data='private_public')
+        form = InlineKeyboardButton(text='В раздел формы', callback_data='form_public')
+        open_chat = InlineKeyboardButton(text='В открытый канал', callback_data='open_chat_public')
+        end = InlineKeyboardButton(text='Выйти', callback_data='end_public')
+
+        forward_keyboard.add(private, form, open_chat, end)
+        forward_keyboard.adjust(1, repeat=True)
+        return forward_keyboard.as_markup()
 
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

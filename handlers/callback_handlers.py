@@ -2,15 +2,17 @@ from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import FSInputFile, InlineKeyboardMarkup
+from aiogram.types import FSInputFile
 import json
+from aiogram.exceptions import TelegramBadRequest
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, execution_count_decorator
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, execution_count_decorator, extracting_query_info
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
+
 
 db = Database()
 router = Router()
@@ -45,68 +47,87 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
         current_question = current_question[0][1][1]
         bot_answer, bot_questions = fuzzy_handler(user_question=current_question, pattern=QUESTION_PATTERN)
         await callback.message.edit_text(text=f"Вопрос: {current_question}\nОтвет: {bot_answer}", reply_markup=User_Keyboards.back_to_fuzzy_questions().as_markup())
-
     elif callback_data == "back_to_fuzzy":
         keyboard, text = User_Keyboards.fuzzy_buttons_generate(information)
         await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
 
-@router.callback_query(Specialist_states.choosing_publication_destination)
+@router.callback_query(Specialist_states.public_choose)
 async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> None:
     from main import bot
     from cache_container import Data_storage
 
     @execution_count_decorator
-    async def sending_process(private: bool = True, chat_id: int = 0, message_type: str = 'message', file_id: int = 0, finished: bool = False):
-        from keyboards import BUTTONS_TO_REMOVE
+    async def sending_process(form_name: str = None, private: bool = True, message_type: str = 'message', file_id: int = 0, finished: bool = False, callback_queue = callback, state = state):
+        from keyboards import BUTTONS_TO_NUMBER
+        from non_script_files.config import FORMS
+
         await state.set_state(Specialist_states.choosing_question)
         data = await state.get_data()
 
-        question_id = data['question_id'] ; answer_message_id = data['question_message']
-        question_message_id = await db.get_question_message_id(question_id=question_id)
+        question_message_id = await db.get_question_message_id(question_id=data['question_id'])
         question_text = data['question'] ; question_text_for_user = question_text.split("\n")
-        lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
-        menu_to_change = data['menu'] ; user_id = tuple_of_info[1][1]
+        tuple_of_info = await db.get_lp_user_info(lp_user_id=data['user_id'])
+        user_id = tuple_of_info[1][1]
         form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
-        question_text_for_user = question_text.split("\n")
         
         if finished == True:
-            await bot.edit_message_text(text=f'<b>Вы успешно ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=answer_message_id)
+            '''
+            Обработка выхода из состояния публикации
+            '''
+            await bot.edit_message_text(text=f'<b>Вы успешно ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
             await callback.answer(text='Вы успешно завершили процесс')
             await callback.message.delete()
+            # markup = InlineKeyboardBuilder()
+            # await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
+            await callback.message.answer('Теперь вы можете выбирать другие вопросы для ответа')
+            await state.set_state(Specialist_states.choosing_question)
         else: 
-            found_data = (pattern for pattern in BUTTONS_TO_REMOVE for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-            await callback.message.edit_reply_markup(inline_message_id=str(menu_to_change.message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+            found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+            await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
 
             if private == True and message_type == 'message':
-                await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}', reply_to_message_id=question_message_id)
+                await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
             elif private == False and message_type == 'message':
-                await bot.send_message(chat_id=chat_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}')
+                if form_name:
+                    await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_name])
             elif private == False and message_type == 'document':
-                await bot.send_document(chat_id=chat_id, document=file_id, caption='')
+                if form_name:
+                    await bot.send_document(chat_id=-1001994572201, document=file_id, caption='', message_thread_id=FORMS[form_name])
 
-            await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=callback.from_user.id, message_id=answer_message_id)
-            await state.set_state(Specialist_states.choosing_publication_destination)
+            try:
+                await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
+            except TelegramBadRequest:
+                pass
+            await state.set_state(Specialist_states.public_choose)
 
-        return f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["question_answer"]}', message_type
+        return f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}'
 
-    
     Data_storage.callback_texts.append(callback.data)
+    
     if callback.data == "private_message":
-        await sending_process()
+        await sending_process(callback_queue=callback)
         await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
     elif "form_type" in callback.data:
         callback_data = callback.data ; form_info = callback_data.split(":") ; form_info = form_info[1]
         form_info = await db.get_form_by_name(form_name=form_info)
-        channel_id = await db.extract_channel_info(form_name=form_info[1])
-        pub_text, message_type = await sending_process(private=False, chat_id=channel_id[6], finished=False)
+        pub_text = await sending_process(form_name=form_info[1].strip(), 
+                                         private=False, 
+                                         finished=False, 
+                                         callback_queue=callback)
         await callback.message.reply(f'Ответ отправлен в канал формы: {form_info[1]}')
-        higher_user_info = db.get_spec_info_by_user_id(user_id=callback.from_user.id)
-        await db.publication_process_filling(channel_id=channel_id[0],
-                                             publication_content=pub_text,
-                                             publication_type=message_type,
-                                             post_suggester=higher_user_info)
-    if callback.data == 'finish_state':
-        sending_process(finished=True)
+        query_dict = extracting_query_info(query=callback)
+        await db.add_suggestion_to_post(post_content=pub_text, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
+    elif callback.data == 'finish_state':
+        await sending_process(finished=True,
+                        callback_queue=callback,
+                        state=state)
+    elif callback.data == 'open_chat_public':
+        pub_text = await sending_process(private=False, 
+                                         finished=False, 
+                                         callback_queue=callback)
+        query_dict = extracting_query_info(query=callback)
+        await db.add_suggestion_to_post(post_content=pub_text, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
+        await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
         
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -128,7 +149,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
 
         history = information_tuple[0] ; history = list(history.items())
         user_full_identification = list(information_tuple[1])
-        history_text += f'Телеграм-никнейм пользователя: {user_full_identification[1]}{NEXT_STRING}{NEXT_STRING}{NEXT_STRING}'
+        # history_text += f'Телеграм-никнейм пользователя: {user_full_identification[1]}{NEXT_STRING}{NEXT_STRING}{NEXT_STRING}'
     
         for i in range(len(history)):
             history_text += f"""{''.join([f'{elem[0]} - {elem[1]}{NEXT_STRING}' for elem in list(history[i][1].items())])}\n\n"""
@@ -140,7 +161,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         message_ids = []
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
-            user_name = lp_user_info[0][3]
+            user_name = lp_user_info[0][1]
             message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
@@ -237,7 +258,7 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         cb_data = callback.data ; cb_data = cb_data.split("&") ; cb_data = cb_data[1].split(":") ; callback_id = int(cb_data[1])
         info_tuple = await db.get_massive_of_values(form_id=callback_id)
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
-        information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nНомер телефона: {form_info_list[5]}"""
+        information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nДата регистрации: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
     elif callback_data == 'registration_db':
         from main import bot
@@ -245,68 +266,43 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         excel = FSInputFile('miac_output.xlsx')
         await bot.send_document(chat_id=callback.from_user.id,
                                 document=excel)
+    elif callback_data == 'publications':
+        publications = await db.get_posts_to_public()
+        for publication in publications:
+            await callback.message.answer(publication['publication_content'], reply_markup=Admin_Keyboards.post_publication())
+        await state.set_state(Admin_states.post_publication)
 
-@router.callback_query(Specialist_states.public_choose)
-async def process_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(Admin_states.post_publication)
+async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
-    Обработка выбора публикации
+    Обработка публикации в открытом канале
     '''
     from main import bot
-    data = await state.get_data()
-    question_id = data['question_id']
-    question_text = data['question']
-    question_text_for_user = question_text.split("\n")
-    answer = data['answer']
-    message_id = data['text_id']
-    if callback.data == 'private_public':
-        '''
-        Обработка для личной переписки
-        '''
-        lp_user_id = data['user_id'] ; tuple_of_info = await db.get_lp_user_info(lp_user_id=lp_user_id)
-        user_id = tuple_of_info[1][1]
-        question_message_id = await db.get_question_message_id(question_id=question_id)
-        await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {answer}', reply_to_message_id=question_message_id)
-        await callback.message.answer('Ответ отправлен в личные сообщения')
-    elif callback.data == 'form_public':
-        '''
-        Обработка отправки в раздел форм
-        '''
-        forms = {'• Специализированные формы (№ 7, 9, 34; Ф. № 10, 36; Ф. № 36 -ПЛ; Ф. № 11, 37; Ф. № 13; Ф. № 15; Ф. № 55, 56; Ф. № 57; Ф. № 61; Ф. № 64 ; Ф. № 30 (в части работы Лабораторной службы)': 27,
-                 '• Ф. № 14, 19, 41, 54, 16-ВН, 1-РБ, 1-Дети (здрав), 32, 232(вкладыш), 53, 70': 25,
-                 '• Ф. № 12, 12-село': 23,
-                 '• ф. № 8, 33, 2-ТБ, 7-ТБ, 8-ТБ, 10-ТБ (туберкулез);': 20,
-                 '• Ф. № 47': 18,
-                 '• Ф. № 14-ДС; Ф. 30 (в части работы СМП) Шляфер С.И.': 16,
-                 '• Ф. № 30 Шелепова Е.А.': 14,
-                 '• Ф. № 30 Тюрина Е.М.': 12,
-                 '• Ф. № 30 Латышова А.А.': 10,
-                 '• Общий раздел': 8,
-                 '• Система МЕДСТАТ': 6,
-                 '• Нормативные документы': 4}
-        form_name = '•' + question_text_for_user[1].split('•')[-1]
-        await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {answer}',
-                               message_thread_id=forms[form_name])
-        await callback.message.answer('Ответ отправлен в раздел форм')
-    elif callback.data == 'open_chat_public':
-        pass
-    elif callback.data == 'end_public':
-        '''
-        Обработка выхода из состояния публикации
-        '''
-        markup = InlineKeyboardBuilder()
-        await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-        await callback.message.answer('Можете выбирать другие вопросы для ответа')
-        await state.set_state(Specialist_states.choosing_question)
-
+    if callback.data == 'accept_post':
+        await bot.send_message(chat_id=-1001930879729, text=callback.message.html_text)
+        await callback.message.edit_text(text=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
+        await db.update_publication_status(publication_content=callback.message.html_text, 
+                                           publication_status='Accept',
+                                           user_id=callback.from_user.id)
+    elif callback.data == 'decline_post':
+        await callback.message.edit_text(text=f'<b>Вы отклонили этот пост</b>\n{callback.message.html_text}')
+        await db.update_publication_status(publication_content=callback.message.html_text, 
+                                           publication_status='Decline',
+                                           user_id=callback.from_user.id)
+        
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок user-a
     '''
     @access_block_decorator
-    async def getting_started(callback: types.CallbackQuery, state: FSMContext, *args):
+    async def getting_started(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму', reply_markup=User_Keyboards.section_chose().as_markup())
         await state.set_state(User_states.form_choosing)
+    
+    @access_block_decorator
+    async def getting_link(callback: types.CallbackQuery, state: FSMContext):
+        await callback.message.answer('Ссылка на канал раздела форм - https://t.me/+cNQvBD_FWpQxZWRi')
 
     chat_id = callback.from_user.id
     from main import bot
@@ -348,6 +344,9 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'specialist_panel':
         await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.questions_gen())
         await state.set_state(Specialist_states.choosing_question)
-    elif callback.data == 'user_panel':
-        pass
+    elif callback.data == 'link_open_chat':
+        await callback.message.answer('Ссылка на открытый канал - https://t.me/open_chat_medstat')
+    elif callback.data == 'link_razdel_chat':
+        await getting_link(callback, state)
+        
     

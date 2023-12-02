@@ -7,7 +7,6 @@ from fuzzywuzzy import fuzz
 from aiogram.fsm.context import FSMContext
 from aiogram import types
 import pandas as pd
-
 from db_actions import Database
 
 db = Database()
@@ -43,8 +42,9 @@ def access_block_decorator(func):
 
     async def async_wrapper(quarry_type, state):
         @quarry_definition_decorator
-        async def locker(**kwargs):
+        async def inner_locker(**kwargs):
             status = await db.get_status(user_id=kwargs["user_id"]) if quarry_type or state else ...
+            data = await state.get_data()
 
             match status:
                 case 'Accept':
@@ -54,13 +54,13 @@ def access_block_decorator(func):
                 case 'Decline':
                     await kwargs["answer_type"].answer(text="Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу. Свяжитесь с администратором - @tsayushka")
 
-            try:
-                if kwargs['access_restricted'] == True:
-                    await kwargs["answer_type"].answer(text="Вы не можете завершить процесс, не отправив публикацию в один из предложенных каналов или в личный чат пользователя")
-            except Exception:
-                pass
+            # try:
+            #     if data['back_to_question_restricted'] == True:
+            #         await quarry_type.answer(text="Вы не можете завершить процесс, не отправив публикацию в один из предложенных каналов или в личный чат пользователя")
+            # except KeyError:
+            #     pass
 
-        return await locker(quarry_type, state)
+        return await inner_locker(quarry_type, state)
     return async_wrapper 
 
 def quarry_definition_decorator(func):
@@ -74,12 +74,13 @@ def quarry_definition_decorator(func):
         заполненным контейнером kwargs
     """
     @wraps(func) 
-    async def async_wrapper(query_type, state, **kwargs):             
+    async def async_wrapper(query_type, state, **kwargs):  
                 if isinstance(query_type, types.Message) == True:
                     kwargs.update({
                         "chat_id": query_type.chat.id,
                         "user_id": query_type.from_user.id,
                         "chat_type": query_type.chat.type,
+                        "answer_message_type": query_type.answer,
                         "answer_type": query_type,
                         "message_id": query_type.message_id,
                         "edit_text": None
@@ -89,6 +90,7 @@ def quarry_definition_decorator(func):
                         "chat_id": query_type.message.chat.id,
                         "user_id": query_type.from_user.id,
                         "chat_type": query_type.message.chat.type,
+                        "answer_message_type": query_type.message.answer,
                         "answer_type": query_type,
                         "message_id": query_type.message.message_id,
                         "edit_text": query_type.message.edit_text
@@ -155,16 +157,28 @@ def execution_count_decorator(func):
     4. Декоратор так же сохраняет все пройденные коллбэки для работы с кнопками клавиатуры;
     """
     async_wrapper_counter = 0
+    gathered_callback = []
+
+    def split_and_index(obj):
+        obj = obj.split("_")
+        return obj[0]
+
     async def async_wrapper(*args, **kwargs):
+        # query_type = kwargs['callback_queue'].copy()
         nonlocal async_wrapper_counter
+        nonlocal gathered_callback
         async_wrapper_counter += 1
-        try:
-            if async_wrapper_counter == 1 and kwargs['finished'] == True:
-                @access_block_decorator
-                def locker_raise(access_restricted = True):
-                    ...
-                locker_raise(access_restricted = True)
-        except KeyError: pass
+        gathered_callback.append(kwargs['callback_queue'].data)
+        kwargs['callback_queue'] = list(map(lambda x: split_and_index(x), gathered_callback))
+        
+        # try:
+        #     if async_wrapper_counter == 1 and kwargs['finished'] == True:
+        #         await kwargs['state'].update_data(back_to_question_restricted=True)
+        #         @access_block_decorator
+        #         def locker_raise(query_type, state):
+        #             ...
+        #         locker_raise(query_type, kwargs['state'])
+        # except KeyError: pass
         return await func(*args, **kwargs)
     return async_wrapper
 
@@ -173,7 +187,6 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-
 async def create_questions(specialist_id: int) -> tuple[dict]:
     rows = await db.get_specialits_questions(specialist_id=specialist_id)
     questions = []
@@ -257,7 +270,77 @@ async def creating_excel_users() -> None:
     Создание excel файла с данными по зарегистрированным пользователям
     '''
     from main import db
-    df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 'ФИО', 
-                                                              'Должность', 'Номер телефона', 'Дата регистрации'])
-    df_output = df.loc[:, ['Наименование субъекта', 'ФИО', 'Должность', 'Номер телефона', 'Дата регистрации']]
+    df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 
+                                                              'Должность', 'Организация', 'Дата регистрации'])
+    df_output = df.loc[:, ['Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
     df_output.to_excel('miac_output.xlsx')
+
+def extracting_query_info(query):
+    query_info = dict()
+
+    if isinstance(query, types.Message) == True:
+        
+        if query.text:
+            query_info['query_format'] = 'Text'
+        
+        if query.photo:
+            query_info['query_format'] = 'Photo'
+
+        if query.document:
+            query_info['query_format'] = 'Document'
+            query_info['file_name'] = query.document.file_name
+        else:
+            query_info['file_name'] = 'Null'
+
+        if query.video:
+            query_info['query_format'] = 'Video'
+        
+        if query.caption:
+                query_info['has_caption'] = True
+                query_info['caption_text'] = query.caption
+        else:
+            query_info['has_caption'] = False
+            query_info['caption_text'] = 'Null'
+        
+        return query_info
+    elif isinstance(query, types.CallbackQuery) == True:
+
+        if query.message.text:
+            query_info['query_format'] = 'Text'
+        
+        if query.message.photo:
+            query_info['query_format'] = 'Photo'
+
+        if query.message.document:
+            query_info['query_format'] = 'Document'
+            query_info['file_name'] = query.message.document.file_name
+        else:
+            query_info['file_name'] = 'Null'
+
+        if query.message.video:
+            query_info['query_format'] = 'Video'
+        
+        if query.message.caption:
+                query_info['has_caption'] = True
+                query_info['caption_text'] = query.message.caption
+        else:
+            query_info['has_caption'] = False
+            query_info['caption_text'] = 'Null'
+
+        return query_info
+        
+               
+        
+
+
+        
+
+        
+
+
+        
+
+        
+
+        
+

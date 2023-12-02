@@ -21,13 +21,12 @@ async def on_shutdown():
     print('Бот выключен!')
 
 async def main() -> None:
-    from handlers import message_handlers, callback_handlers, post_handlers
+    from handlers import message_handlers, callback_handlers
     await bot.delete_webhook(drop_pending_updates=True)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     dp.include_routers(message_handlers.router,
-                       callback_handlers.router,
-                       post_handlers.router)
+                       callback_handlers.router)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 if __name__ == '__main__':

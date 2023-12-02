@@ -51,12 +51,12 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     '''
     from main import bot
     await state.update_data(post=message.text)
-    link = await bot.create_chat_invite_link(chat_id=-1002033917658,
-                                          name='Чат координаторов',
-                                          member_limit=1)
-    await message.answer(f'Пройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
+    # link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+    #                                       name='Чат координаторов',
+    #                                       member_limit=1)
+    # await message.answer(f'Пройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
     await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
-После чего Вы сможете задать вопрос специалисту''', reply_markup=User_Keyboards.main_menu(True).as_markup())
+После чего Вы сможете задать вопрос специалисту и получить доступ к каналам разделов форм''', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await state.clear()
@@ -91,21 +91,25 @@ async def process_question_input(message: types.Message, state: FSMContext) -> N
 async def process_answer(message: types.Message, state: FSMContext) -> None:
     from main import bot
     from cache_container import Data_storage
-    await state.update_data(question_answer=message.text)
     data = await state.get_data()
     question_id = data['question_id'] ; question_text = data['question'] ; question_text_for_user = question_text.split("\n")
     form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)
-    await state.set_state(Specialist_states.choosing_publication_destination)
     publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации. Для того, чтобы выйти из меню нажмите 'Завершить публикацию'. В противном случае вы не сможете отвечать на другие вопросы", reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type))
-    await state.update_data(menu=publication_menu)
+    await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=message.from_user.id, message_id=data['question_message'])
+    await state.update_data(menu=publication_menu, spec_answer=message.text)
+    await state.set_state(Specialist_states.public_choose)
     Data_storage.callback_texts = []
     
 @router.message(F.document)
 async def test(message: types.Message):
     print(message.document)
+
+@router.channel_post(F.text.contains('id'))
+async def channelt_id_extraction(post: types.Message):
+    print(post)
 
 @router.message(F.text.contains('id'))
 async def chat_id_extraction(message: types.Message):
@@ -118,13 +122,13 @@ async def sending_information(message: types.Message) -> None:
     Отправка данных админу из чата координаторов
     '''
     from main import bot
-    await bot.send_message(chat_id=869012176, text=f'Новые полученные данные {message.text}')
+    await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные {message.text}')
 
-@router.message(F.new_chat_member)
+@router.message(F.new_chat_member & F.chat.id == -1002033917658)
 async def process_new_member(update: types.ChatMemberUpdated) -> None:
     '''
     Отправка приветственного сообщения при входе пользователя в чат
     '''
     from main import bot
     await bot.send_message(chat_id=-1002033917658,
-                           text=f'Добрый день, @{update.from_user.full_name}! В целях качественного и оператиного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b>.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')
+                           text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')

@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramBadRequest
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, execution_count_decorator, extracting_query_info
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -68,6 +68,7 @@ async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> 
 
         if 'form' in callback.data:
             form_id = callback.data.split(":") ; form_id = form_id[1].split("&") ; form_id = int(form_id[0])
+
             for key, value in FORMS.items():
                 if value == form_id:
                     form_type = key
@@ -116,25 +117,25 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
 
     if callback.data == "private_message":
         found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
     elif "form_type" in callback.data:
         found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
         query_dict, file_id = extracting_query_info(query=callback)
         await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
         await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
     elif callback.data == 'open_chat_public':
         found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         query_dict, file_id = extracting_query_info(query=callback)
         await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
         await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
     elif callback.data == 'finish_state':
         found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.edit_message_text(text=f'<b>Вы успешно ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
         await callback.answer(text='Вы успешно завершили процесс')
         await callback.message.delete()
@@ -276,11 +277,8 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         excel = FSInputFile('miac_output.xlsx')
         await bot.send_document(chat_id=callback.from_user.id,
                                 document=excel)
-    elif callback_data == 'publications':
-        publications = await db.get_posts_to_public()
-        for publication in publications:
-            await callback.message.answer(publication['publication_content'], reply_markup=Admin_Keyboards.post_publication())
-        await state.set_state(Admin_states.post_publication)
+    elif callback.data == 'check_reg':
+        await callback.message.edit_text(text="Выберете заявку из предложенных:", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
 
 @router.callback_query(Admin_states.post_publication)
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -288,17 +286,43 @@ async def process_open_chat_publication(callback: types.CallbackQuery, state: FS
     Обработка публикации в открытом канале
     '''
     from main import bot
-    if callback.data == 'accept_post':
-        await bot.send_message(chat_id=-1001930879729, text=callback.message.html_text)
-        await callback.message.edit_text(text=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
-        await db.update_publication_status(publication_content=callback.message.html_text, 
-                                           publication_status='Accept',
-                                           user_id=callback.from_user.id)
-    elif callback.data == 'decline_post':
-        await callback.message.edit_text(text=f'<b>Вы отклонили этот пост</b>\n{callback.message.html_text}')
-        await db.update_publication_status(publication_content=callback.message.html_text, 
-                                           publication_status='Decline',
-                                           user_id=callback.from_user.id)
+    if 'accept_post' in callback.data:
+        pub_type = callback.data.split("&") ; pub_type = pub_type[1].split(":") ; pub_type = pub_type[1]
+        pub_id = callback.data.split("&") ; pub_id = pub_id[2].split(":") ; pub_id = pub_id[1]
+        
+        match pub_type.capitalize():
+            case 'Text': 
+                await bot.send_message(chat_id=-1001930879729, text=callback.message.html_text)
+                await callback.message.edit_text(text=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
+            case 'Document': 
+                await bot.send_document(chat_id=-1001930879729, document=callback.message.document.file_id, caption=callback.message.html_text)
+                await callback.message.edit_caption(caption=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
+
+        await db.update_publication_status(pub_id=int(pub_id),
+                                           publication_status='Accept')
+    elif 'decline_post' in callback.data:
+        pub_type = callback.data.split("&") ; pub_type = pub_type[1].split(":") ; pub_type = pub_type[1]
+        pub_id = callback.data.split("&") ; pub_id = pub_id[2].split(":") ; pub_id = pub_id[1]
+        
+        match pub_type.capitalize():
+            case 'Text': 
+                await bot.send_message(chat_id=-1001930879729, text=callback.message.html_text)
+                await callback.message.edit_text(text=f'<b>Вы отклонили этот пост</b>\n{callback.message.html_text}')
+            case 'Document': 
+                await bot.send_document(chat_id=-1001930879729, document=callback.message.document.file_id, caption=callback.message.html_text)
+                await callback.message.edit_caption(caption=f'<b>Вы отклонили этот пост</b>\n{callback.message.html_text}')
+
+        await db.update_publication_status(pub_id=int(pub_id), 
+                                           publication_status='Decline')
+    elif callback.data == 'publications':
+        publications = await db.get_posts_to_public()
+        for publication in publications:
+            if publication['publication_type']['publication_format'] == 'Text':
+                await callback.message.answer(text=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
+            elif publication['publication_type']['publication_format'] == 'Document': 
+                await bot.send_document(chat_id=callback.from_user.id, caption=publication['publication_type']['caption_text'], document=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(pub_type='document', post_id=publication['id']))
+        await callback.message.answer(text='Если публикации закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых', reply_markup=Admin_Keyboards.pub_refresh())
+        await state.set_state(Admin_states.post_publication)
         
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -382,6 +406,15 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="Выберете заявку из предложенных:", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
         await state.set_state(Admin_states.registration_process)
+    elif callback.data == 'publications':
+        publications = await db.get_posts_to_public()
+        for publication in publications:
+            if publication['publication_type']['publication_format'] == 'Text':
+                await callback.message.answer(text=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
+            elif publication['publication_type']['publication_format'] == 'Document': 
+                await bot.send_document(chat_id=callback.from_user.id, caption=publication['publication_type']['caption_text'], document=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(pub_type='document', post_id=publication['id']))
+        await callback.message.answer(text='Если публикации закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых', reply_markup=Admin_Keyboards.pub_refresh())
+        await state.set_state(Admin_states.post_publication)
     
 
 

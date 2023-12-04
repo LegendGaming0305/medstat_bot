@@ -161,12 +161,10 @@ class Admin_Keyboards():
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
         registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
         publications = InlineKeyboardButton(text='Проверить публикации', callback_data='publications')
-        get_to_chats = InlineKeyboardButton(text='Чаты и каналы', callback_data='chats_and_channels')
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
-                                    publications,
-                                    get_to_chats)
+                                    publications)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
@@ -182,8 +180,7 @@ class Admin_Keyboards():
         accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}:{user_string_id}')
 
         admin_registrator_keyboard.add(accept, decline,
-                                       back_to_checking,
-                                       InlineKeyboardButton(text='Вернуться в меню', callback_data='admin_panel'))
+                                       back_to_checking)
         admin_registrator_keyboard.adjust(2, 1)
 
         return admin_registrator_keyboard
@@ -202,20 +199,25 @@ class Admin_Keyboards():
 
         return generated_keyboard
     
-    def post_publication() -> InlineKeyboardBuilder:
+    def post_publication(post_id: int, pub_type: str = 'text') -> InlineKeyboardBuilder:
         '''
         Клавиатура для выбора публикации в открытом канале
         '''
         publication_keyboard = InlineKeyboardBuilder()
 
-        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data='accept_post')
-        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data='decline_post')
+        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data=f'accept_post&pub_type:{pub_type}&pub_id:{post_id}')
+        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data=f'decline_post&pub_type:{pub_type}&pub_id:{post_id}')
 
         publication_keyboard.add(accept_post, decline_post)
         publication_keyboard.adjust(2)
 
         return publication_keyboard.as_markup()
 
+    def pub_refresh():
+        pub_ref_kb = InlineKeyboardBuilder()
+        pub_ref_kb.add(InlineKeyboardButton(text='Проверить публикации', callback_data='publications'))
+        pub_ref_kb.adjust(1)
+        return pub_ref_kb.as_markup()
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
@@ -290,9 +292,10 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
-    def publication_buttons(form_type: str = None, found_patterns: tuple = (), file_type: str = 'message') -> InlineKeyboardBuilder:
+    def publication_buttons(spec_forms = None, found_patterns: tuple = (), file_type: str = 'message') -> InlineKeyboardBuilder:
         from keyboards import BUTTONS_TO_NUMBER
         from non_script_files.config import FORMS
+
         '''
         Данная функция принимает в себя обязательный аргумент form_type, за который закрепляется имя формы,
         а так же необязательные позиционные аргументы *args что представляют из себя 
@@ -300,19 +303,23 @@ class Specialist_keyboards():
         Планируется, что в 
         '''
 
+        if isinstance(spec_forms, str) != True:
+            spec_forms = [form_name[1] for form_name in spec_forms]
+            spec_forms = {form_name:value for form_name in spec_forms for key, value in FORMS.items() if key == form_name}
+
         public_kb = InlineKeyboardBuilder()
         if found_patterns == ():
             finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
 
             if file_type == 'message':
                 private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
-                section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}") if form_type != None else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in FORMS.items()]
+                section_chat = InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}") if isinstance(spec_forms, str) == True else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in spec_forms.items()]
                 open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
-                public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong) if form_type != None else public_kb.add(private_chat, *section_chat, open_channel, finish_redirectiong)
+                public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong) if isinstance(spec_forms, str) == True else public_kb.add(private_chat, *section_chat, open_channel, finish_redirectiong)
             else:
-                section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}&{file_type}") if form_type != None else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in FORMS.items()]
+                section_chat = InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}&{file_type}") if isinstance(spec_forms, str) == True else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in spec_forms.items()]
                 open_channel = InlineKeyboardButton(text="В открытый канал", callback_data=f"open_chat_public&{file_type}")
-                public_kb.add(section_chat, open_channel, finish_redirectiong) if form_type != None else public_kb.add(*section_chat, open_channel, finish_redirectiong)
+                public_kb.add(section_chat, open_channel, finish_redirectiong) if isinstance(spec_forms, str) == True else public_kb.add(*section_chat, open_channel, finish_redirectiong)
 
             public_kb.adjust(1)
             return public_kb.as_markup()

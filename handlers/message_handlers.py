@@ -106,8 +106,9 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
 async def information_extract(message: types.Message, state: FSMContext) -> None:
     data = await state.get_data()
     query_format_info, file_id = extracting_query_info(query=message)
-    await state.update_data(query_format_info=query_format_info, file_id=file_id)
-    await message.reply(text='Документ успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(file_type='other'))
+    spec_forms = await db.get_specform(user_id=message.from_user.id)
+    publication_menu = await message.reply(text='Документ успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(spec_forms=spec_forms,file_type='other'))
+    await state.update_data(menu=publication_menu, query_format_info=query_format_info, file_id=file_id)
 
 @router.message(F.document)
 async def test(message: types.Message):

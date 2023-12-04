@@ -34,7 +34,8 @@ class Database():
                                       publication_format PUBLICATION_FORMAT,
                                       has_caption BOOL,
                                       caption_text TEXT,
-                                      file_name TEXT);
+                                      file_name TEXT,
+                                      file_id INTEGER);
                             EXCEPTION
                                 WHEN duplicate_object THEN null;
                             END $$;''')
@@ -373,14 +374,20 @@ class Database():
         message_id = await self.connection.fetchval('''SELECT question_message FROM questions_forms WHERE id = $1''', question_id)
         return message_id
     
-    async def get_form_by_name(self, form_name: str):
+    async def get_specform(self, form_name: str = None, user_id: int = None):
         if self.connection is None:
             await self.create_connection()
-        
-        form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
-                                                JOIN specialist_forms AS sf ON ft.id = sf.form_id
+        if form_name:
+            form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+                                                INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
                                                 WHERE form_name = $1''', form_name)
-        return form_info    
+            return form_info    
+        elif user_id:
+            hpu_user_id = await self.connection.fetchval('''SELECT hpu.id FROM high_priority_users AS hpu WHERE hpu.user_id = $1''', user_id)
+            form_info = await self.connection.fetch('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+                                                    INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
+                                                    WHERE sf.specialist_id = $1''', hpu_user_id)
+            return form_info
 
     async def get_spec_info_by_user_id(self, user_id: int):
         if self.connection is None:
@@ -423,15 +430,14 @@ class Database():
         
         return result
     
-    async def update_publication_status(self, publication_content: str, publication_status: str, user_id: int) -> None:
+    async def update_publication_status(self, publication_status: str, pub_id: int) -> None:
         '''
         Обновление статуса публикации и столбца с данным о принявшем решение
         '''
         if self.connection is None:
             await self.create_connection()
 
-        await self.connection.execute("""UPDATE publication_process 
+        await self.connection.execute("""UPDATE publication_process
                                       SET publication_status = $1, post_regulator = hp.id
                                       FROM high_priority_users hp
-                                      WHERE publication_content = $2 AND hp.user_id = $3""",
-                                      publication_status, publication_content, user_id)
+                                      WHERE publication_process.id = $2 """, publication_status, pub_id)

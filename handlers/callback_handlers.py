@@ -51,83 +51,95 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
         keyboard, text = User_Keyboards.fuzzy_buttons_generate(information)
         await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
 
-@router.callback_query(Specialist_states.public_choose)
-async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(Specialist_states.public_choose_file)
+async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> None:
+    from non_script_files.config import FORMS
     from main import bot
     from cache_container import Data_storage
+    from keyboards import BUTTONS_TO_NUMBER
 
-    @execution_count_decorator
-    async def sending_process(form_name: str = None, private: bool = True, message_type: str = 'message', file_id: int = 0, finished: bool = False, callback_queue = callback, state = state):
-        from keyboards import BUTTONS_TO_NUMBER
-        from non_script_files.config import FORMS
-
-        await state.set_state(Specialist_states.choosing_question)
+    if 'other' in callback.data:
         data = await state.get_data()
+        file_dict, file_id = data['query_format_info'], data['file_id']
 
-        question_message_id = await db.get_question_message_id(question_id=data['question_id'])
-        question_text = data['question'] ; question_text_for_user = question_text.split("\n")
-        tuple_of_info = await db.get_lp_user_info(lp_user_id=data['user_id'])
-        user_id = tuple_of_info[1][1]
-        form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
-        
-        if finished == True:
-            '''
-            Обработка выхода из состояния публикации
-            '''
-            await bot.edit_message_text(text=f'<b>Вы успешно ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
-            await callback.answer(text='Вы успешно завершили процесс')
-            await callback.message.delete()
-            # markup = InlineKeyboardBuilder()
-            # await callback.message.edit_reply_markup(reply_markup=markup.as_markup())
-            await callback.message.answer('Теперь вы можете выбирать другие вопросы для ответа')
-            await state.set_state(Specialist_states.choosing_question)
-        else: 
-            found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-            await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        # Data_storage.callback_texts.append(callback.data)
+        # found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        # await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
 
-            if private == True and message_type == 'message':
-                await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
-            elif private == False and message_type == 'message':
-                if form_name:
-                    await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_name])
-            elif private == False and message_type == 'document':
-                if form_name:
-                    await bot.send_document(chat_id=-1001994572201, document=file_id, caption='', message_thread_id=FORMS[form_name])
+        if 'form' in callback.data:
+            form_id = callback.data.split(":") ; form_id = form_id[1].split("&") ; form_id = int(form_id[0])
+            for key, value in FORMS.items():
+                if value == form_id:
+                    form_type = key
 
-            try:
-                await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
-            except TelegramBadRequest:
-                pass
-            await state.set_state(Specialist_states.public_choose)
+            match file_dict['query_format']:
+                case 'Document': 
+                    await bot.send_document(chat_id=-1001994572201, document=file_id, message_thread_id=FORMS[form_type], caption=file_dict['caption_text'])
+                case 'Photo': pass
+                case 'Video': pass
+            await callback.message.reply(f'Файл отправлен в канал формы: {form_type}')
+            await db.add_suggestion_to_post(post_content=file_id, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(file_dict.values()), pub_state='Accept')
+        elif 'open_chat' in callback.data:
+            await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
+            await db.add_suggestion_to_post(post_content=file_id, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(file_dict.values()))
 
-        return f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}'
+    if callback.data == 'finish_state':
+        await callback.answer(text='Вы успешно завершили процесс')
+        await callback.message.delete()
+        await callback.message.answer('Теперь вы можете вернуться в меню')
+        await state.set_state(Specialist_states.choosing_question)
+
+@router.callback_query(Specialist_states.public_choose_message)
+async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''Обработка текстовых сообщений - вопрос-ответов'''
+    from main import bot
+    from cache_container import Data_storage
+    from keyboards import BUTTONS_TO_NUMBER
+    from non_script_files.config import FORMS
+
+    await state.set_state(Specialist_states.choosing_question)
+    data = await state.get_data()
+
+    question_message_id = await db.get_question_message_id(question_id=data['question_id'])
+    question_text = data['question'] ; question_text_for_user = question_text.split("\n")
+    tuple_of_info = await db.get_lp_user_info(lp_user_id=data['user_id'])
+    user_id = tuple_of_info[1][1]
+    form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
+
+    try:
+        await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
+    except TelegramBadRequest:
+        pass
+    await state.set_state(Specialist_states.public_choose_message)
 
     Data_storage.callback_texts.append(callback.data)
-    
+
     if callback.data == "private_message":
-        await sending_process(callback_queue=callback)
+        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
     elif "form_type" in callback.data:
-        callback_data = callback.data ; form_info = callback_data.split(":") ; form_info = form_info[1]
-        form_info = await db.get_form_by_name(form_name=form_info)
-        pub_text = await sending_process(form_name=form_info[1].strip(), 
-                                         private=False, 
-                                         finished=False, 
-                                         callback_queue=callback)
-        await callback.message.reply(f'Ответ отправлен в канал формы: {form_info[1]}')
-        query_dict = extracting_query_info(query=callback)
-        await db.add_suggestion_to_post(post_content=pub_text, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
-    elif callback.data == 'finish_state':
-        await sending_process(finished=True,
-                        callback_queue=callback,
-                        state=state)
+        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
+        query_dict, file_id = extracting_query_info(query=callback)
+        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
+        await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
     elif callback.data == 'open_chat_public':
-        pub_text = await sending_process(private=False, 
-                                         finished=False, 
-                                         callback_queue=callback)
-        query_dict = extracting_query_info(query=callback)
-        await db.add_suggestion_to_post(post_content=pub_text, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
+        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        query_dict, file_id = extracting_query_info(query=callback)
+        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
         await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
+    elif callback.data == 'finish_state':
+        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
+        await bot.edit_message_text(text=f'<b>Вы успешно ответили на этот вопрос</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
+        await callback.answer(text='Вы успешно завершили процесс')
+        await callback.message.delete()
+        await callback.message.answer('Теперь вы можете выбирать другие вопросы для ответа')
+        await state.set_state(Specialist_states.choosing_question)
         
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -236,9 +248,7 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
     '''
     callback_data = callback.data
 
-    if callback_data == 'check_reg':
-        await callback.message.edit_text(text="Выберете заявку из предложенных:", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
-    elif 'dec_app' in callback_data:
+    if 'dec_app' in callback_data:
         callback_data = callback_data.split(":")
         await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).send_message(chat_id = int(callback_data[1]), text="Ваша заявка была отклонена")
         await db.update_registration_status(string_id=callback_data[2],
@@ -339,14 +349,47 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == "make_question":
         await getting_started(callback, state)
     elif callback.data == 'admin_panel':
+        await state.clear()
         await callback.message.edit_text(text="Добро пожаловать в Админ-панель", reply_markup=Admin_Keyboards.main_menu())
-        await state.set_state(Admin_states.registration_process)
     elif callback.data == 'specialist_panel':
-        await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.questions_gen())
-        await state.set_state(Specialist_states.choosing_question)
+        await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.main_menu())
     elif callback.data == 'link_open_chat':
         await callback.message.answer('Ссылка на открытый канал - https://t.me/open_chat_medstat')
     elif callback.data == 'link_razdel_chat':
         await getting_link(callback, state)
-        
+    elif callback.data == 'chats_and_channels':
+        await callback.message.edit_text(text="Выберете чат\канал в который хотите перейти", reply_markup=Admin_Keyboards.access_to_channels())
+    elif callback.data == 'upload_files':
+        await callback.message.edit_text(text='Прикрепите файл и текстовое описание к нему')
+        await state.set_state(Specialist_states.public_choose_file)
+    elif callback.data == 'answer_the_question':
+        await state.set_state(Specialist_states.choosing_question)
+        questions = await create_questions(callback.from_user.id)
+        await callback.message.edit_text('Выберите вопрос')
+        message_ids = []
+        for question in questions:
+            lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+            user_name = lp_user_info[0][1]
+            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
+                                                    reply_markup=Specialist_keyboards.question_buttons())
+            message_ids.append(message.message_id)
+        await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                    reply_markup=Specialist_keyboards.questions_gen())
+        try:
+            await state.update_data(message_ids=message_ids)
+        except UnboundLocalError:
+            pass
+    elif callback.data == 'check_reg':
+        await callback.message.edit_text(text="Выберете заявку из предложенных:", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
+        await state.set_state(Admin_states.registration_process)
     
+
+
+
+
+
+
+
+
+
+

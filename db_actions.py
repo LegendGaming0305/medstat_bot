@@ -397,19 +397,19 @@ class Database():
         miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
         return miac_users
     
-    async def add_suggestion_to_post(self, post_content: str, post_suggestor: int, pub_type_tuple: tuple) -> None:
+    async def add_suggestion_to_post(self, post_content: str, post_suggestor: int, pub_type_tuple: tuple, pub_state: str = 'Pending') -> None:
         '''
         Добавление данных для поста публикации в открытый канал или в раздел форм
         '''
         if self.connection is None:
             await self.create_connection()
 
-        await self.connection.execute('''INSERT INTO publication_process (publication_content, post_suggester)
-                                      SELECT $1, hp.id
+        await self.connection.execute('''INSERT INTO publication_process (publication_content, publication_status, post_suggester)
+                                      SELECT $1, $2, hp.id
                                       FROM high_priority_users hp
-                                      WHERE $2 = hp.user_id''', post_content, post_suggestor)
+                                      WHERE $3 = hp.user_id''', post_content, pub_state, post_suggestor)
         last_row_id = await self.connection.fetchval('''SELECT pp.id FROM publication_process AS pp ORDER BY publication_date DESC LIMIT 1;''')
-        await self.connection.execute('''UPDATE publication_process SET publication_type = ROW($1, $2, $3, $4) WHERE id = $5''', pub_type_tuple[0], pub_type_tuple[2], pub_type_tuple[3], pub_type_tuple[1], last_row_id)
+        await self.connection.execute('''UPDATE publication_process SET publication_type = ROW($1, $2, $3, $4), publication_status = $5 WHERE id = $6''', pub_type_tuple[0], pub_type_tuple[2], pub_type_tuple[3], pub_type_tuple[1], pub_state, last_row_id)
 
     async def get_posts_to_public(self) -> list[Record]:
         '''

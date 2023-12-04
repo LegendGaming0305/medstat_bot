@@ -151,6 +151,7 @@ class Owner_Keyboards():
 class Admin_Keyboards():
 
     def main_menu() -> InlineKeyboardMarkup:
+        from non_script_files.config import FORMS
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
@@ -160,10 +161,12 @@ class Admin_Keyboards():
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
         registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
         publications = InlineKeyboardButton(text='Проверить публикации', callback_data='publications')
+        get_to_chats = InlineKeyboardButton(text='Чаты и каналы', callback_data='chats_and_channels')
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
-                                    publications)
+                                    publications,
+                                    get_to_chats)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
@@ -179,7 +182,8 @@ class Admin_Keyboards():
         accept = InlineKeyboardButton(text='Принять заявку', callback_data=f'acc_app:{user_id}:{user_string_id}')
 
         admin_registrator_keyboard.add(accept, decline,
-                                       back_to_checking)
+                                       back_to_checking,
+                                       InlineKeyboardButton(text='Вернуться в меню', callback_data='admin_panel'))
         admin_registrator_keyboard.adjust(2, 1)
 
         return admin_registrator_keyboard
@@ -198,7 +202,7 @@ class Admin_Keyboards():
 
         return generated_keyboard
     
-    def post_publication() -> InlineKeyboardMarkup:
+    def post_publication() -> InlineKeyboardBuilder:
         '''
         Клавиатура для выбора публикации в открытом канале
         '''
@@ -211,7 +215,7 @@ class Admin_Keyboards():
         publication_keyboard.adjust(2)
 
         return publication_keyboard.as_markup()
-    
+
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
@@ -220,8 +224,23 @@ class Admin_Keyboards():
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
+
+    def main_menu() -> InlineKeyboardBuilder:
+        main_menu_kb = InlineKeyboardBuilder()
+
+        answer_the_question = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question')
+        upload_file = InlineKeyboardButton(text='Отправить файл', callback_data='upload_files')
+        main_menu_kb.add(answer_the_question, upload_file)
+        main_menu_kb.adjust(1)
+        return main_menu_kb.as_markup()
     
-    def questions_gen() -> InlineKeyboardMarkup:
+    def sending_process() -> InlineKeyboardBuilder:
+        sending_kb = InlineKeyboardBuilder()
+        sending_kb.add(InlineKeyboardButton(text='Отменить отправку', callback_data='specialist_panel'))
+        sending_kb.adjust(1)
+        return sending_kb
+
+    def questions_gen() -> InlineKeyboardBuilder:
         '''
         Создание кнопок вопросов для специалиста
         '''
@@ -271,30 +290,44 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
-    def publication_buttons(form_type: str, found_patterns: tuple = ()) -> InlineKeyboardBuilder:
+    def publication_buttons(form_type: str = None, found_patterns: tuple = (), file_type: str = 'message') -> InlineKeyboardBuilder:
         from keyboards import BUTTONS_TO_NUMBER
+        from non_script_files.config import FORMS
         '''
         Данная функция принимает в себя обязательный аргумент form_type, за который закрепляется имя формы,
         а так же необязательные позиционные аргументы *args что представляют из себя 
         кнопки, которые необходимо выключить.
         Планируется, что в 
         '''
+
         public_kb = InlineKeyboardBuilder()
         if found_patterns == ():
-            private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
-            section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}")
-            open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
             finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
-            public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong)
+
+            if file_type == 'message':
+                private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
+                section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}") if form_type != None else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in FORMS.items()]
+                open_channel = InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
+                public_kb.add(private_chat, section_chat, open_channel, finish_redirectiong) if form_type != None else public_kb.add(private_chat, *section_chat, open_channel, finish_redirectiong)
+            else:
+                section_chat = InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}&{file_type}") if form_type != None else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in FORMS.items()]
+                open_channel = InlineKeyboardButton(text="В открытый канал", callback_data=f"open_chat_public&{file_type}")
+                public_kb.add(section_chat, open_channel, finish_redirectiong) if form_type != None else public_kb.add(*section_chat, open_channel, finish_redirectiong)
+
             public_kb.adjust(1)
             return public_kb.as_markup()
         else:
-
-            BUTTONS_DICT = {
-                'private': InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message"),
-                'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}"),
-                'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
-            }
+            if file_type == 'message':
+                BUTTONS_DICT = {
+                    'private': InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message"),
+                    'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}"),
+                    'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
+                }
+            else:
+                BUTTONS_DICT = {
+                    'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}&{file_type}"),
+                    'open': InlineKeyboardButton(text="В открытый канал", callback_data=f"open_chat_public&{file_type}")
+                }
 
             keys, excluded_indices = np.array(list(BUTTONS_DICT.keys())), np.array([BUTTONS_TO_NUMBER.get(elem) for elem in found_patterns])
             mask = np.ones(len(keys), dtype=bool)

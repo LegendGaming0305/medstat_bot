@@ -1,9 +1,8 @@
-from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect
+from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect, save_to_txt, extracting_query_info
 from states import User_states, Specialist_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
 from non_script_files.config import QUESTION_PATTERN
-import asyncio
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
@@ -100,9 +99,16 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
     publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации. Для того, чтобы выйти из меню нажмите 'Завершить публикацию'. В противном случае вы не сможете отвечать на другие вопросы", reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type))
     await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=message.from_user.id, message_id=data['question_message'])
     await state.update_data(menu=publication_menu, spec_answer=message.text)
-    await state.set_state(Specialist_states.public_choose)
+    await state.set_state(Specialist_states.public_choose_message)
     Data_storage.callback_texts = []
-    
+
+@router.message(Specialist_states.public_choose_file)
+async def information_extract(message: types.Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    query_format_info, file_id = extracting_query_info(query=message)
+    await state.update_data(query_format_info=query_format_info, file_id=file_id)
+    await message.reply(text='Документ успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(file_type='other'))
+
 @router.message(F.document)
 async def test(message: types.Message):
     print(message.document)
@@ -113,8 +119,7 @@ async def channelt_id_extraction(post: types.Message):
 
 @router.message(F.text.contains('id'))
 async def chat_id_extraction(message: types.Message):
-    print(message.chat.id)
-    print(message.message_thread_id)
+    save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}''')
 
 @router.message(F.text.contains('#данные'))
 async def sending_information(message: types.Message) -> None:

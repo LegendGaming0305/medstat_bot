@@ -44,7 +44,6 @@ def access_block_decorator(func):
         @quarry_definition_decorator
         async def inner_locker(**kwargs):
             status = await db.get_status(user_id=kwargs["user_id"]) if quarry_type or state else ...
-            data = await state.get_data()
 
             match status:
                 case 'Accept':
@@ -154,23 +153,13 @@ def execution_count_decorator(func):
     2. Он возвращает количество вызовов
     3. Если количество вызовов = 1, а finished == True, то выходит сообщение о том, 
     что необходимо отправить публикацию как минимум один раз, для продолжения сессии
-    4. Декоратор так же сохраняет все пройденные коллбэки для работы с кнопками клавиатуры;
     """
     async_wrapper_counter = 0
-    gathered_callback = []
-
-    def split_and_index(obj):
-        obj = obj.split("_")
-        return obj[0]
-
     async def async_wrapper(*args, **kwargs):
         # query_type = kwargs['callback_queue'].copy()
         nonlocal async_wrapper_counter
-        nonlocal gathered_callback
         async_wrapper_counter += 1
-        gathered_callback.append(kwargs['callback_queue'].data)
-        kwargs['callback_queue'] = list(map(lambda x: split_and_index(x), gathered_callback))
-        
+
         # try:
         #     if async_wrapper_counter == 1 and kwargs['finished'] == True:
         #         await kwargs['state'].update_data(back_to_question_restricted=True)
@@ -282,18 +271,22 @@ def extracting_query_info(query):
         
         if query.text:
             query_info['query_format'] = 'Text'
+            file_id = None
         
         if query.photo:
             query_info['query_format'] = 'Photo'
+            file_id = query.photo[-1]
 
         if query.document:
             query_info['query_format'] = 'Document'
             query_info['file_name'] = query.document.file_name
+            file_id = query.document.file_id
         else:
             query_info['file_name'] = 'Null'
 
         if query.video:
             query_info['query_format'] = 'Video'
+            file_id = query.video.file_id
         
         if query.caption:
                 query_info['has_caption'] = True
@@ -302,24 +295,28 @@ def extracting_query_info(query):
             query_info['has_caption'] = False
             query_info['caption_text'] = 'Null'
         
-        return query_info
+        return query_info, file_id
     elif isinstance(query, types.CallbackQuery) == True:
 
         if query.message.text:
             query_info['query_format'] = 'Text'
-        
+            file_id = None
+
         if query.message.photo:
             query_info['query_format'] = 'Photo'
+            file_id = query.message.photo[-1]
 
         if query.message.document:
             query_info['query_format'] = 'Document'
             query_info['file_name'] = query.message.document.file_name
+            file_id = query.message.document.file_id
         else:
             query_info['file_name'] = 'Null'
 
         if query.message.video:
             query_info['query_format'] = 'Video'
-        
+            file_id = query.message.video.file_id
+
         if query.message.caption:
                 query_info['has_caption'] = True
                 query_info['caption_text'] = query.message.caption
@@ -327,7 +324,7 @@ def extracting_query_info(query):
             query_info['has_caption'] = False
             query_info['caption_text'] = 'Null'
 
-        return query_info
+        return query_info, file_id
         
                
         

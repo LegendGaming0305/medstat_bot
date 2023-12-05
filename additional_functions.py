@@ -247,13 +247,16 @@ def file_reader(file_path: str):
         return pattern_text
 
 async def question_redirect(message: types.Message, state: FSMContext):
+    from states import User_states
     from keyboards import User_Keyboards
     data = await state.get_data()
     user_question = data['user_question']
     await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'], message_id=message.message_id)
-    await message.answer('Ваш вопрос передан')
-    await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
-    await state.clear()
+    await message.reply(text='Ваш вопрос передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+    await state.set_state(User_states.form_choosing)
+
+    # await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+    # await state.clear()
 
 async def creating_excel_users() -> None:
     '''
@@ -327,9 +330,9 @@ def extracting_query_info(query):
 
         return query_info, file_id
     
-async def message_delition(*args, time_sleep = 15):
+async def message_delition(*args, time_sleep = 20):
+            await sleep(time_sleep)
             for arg in args:
-                await sleep(time_sleep)
                 await arg.delete()
         
                

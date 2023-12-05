@@ -332,12 +332,12 @@ class Specialist_keyboards():
             if file_type == 'message':
                 BUTTONS_DICT = {
                     'private': InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message"),
-                    'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}"),
+                    'form': InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}"),
                     'open': InlineKeyboardButton(text="В открытый канал", callback_data="open_chat_public")
                 }
             else:
                 BUTTONS_DICT = {
-                    'form': InlineKeyboardButton(text=f"В раздел формы {form_type}", callback_data=f"form_type:{form_type}&{file_type}"),
+                    'form': InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}&{file_type}"),
                     'open': InlineKeyboardButton(text="В открытый канал", callback_data=f"open_chat_public&{file_type}")
                 }
 

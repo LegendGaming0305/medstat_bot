@@ -96,7 +96,7 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)
-    publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации. Для того, чтобы выйти из меню нажмите 'Завершить публикацию'. В противном случае вы не сможете отвечать на другие вопросы", reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type))
+    publication_menu = await bot.send_message(chat_id=message.from_user.id, text="Выберите тип публикации. Для того, чтобы выйти из меню нажмите 'Завершить публикацию'. В противном случае вы не сможете отвечать на другие вопросы", reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type))
     await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=message.from_user.id, message_id=data['question_message'])
     await state.update_data(menu=publication_menu, spec_answer=message.text)
     await state.set_state(Specialist_states.public_choose_message)

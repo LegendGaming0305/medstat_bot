@@ -415,6 +415,13 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
                 await bot.send_document(chat_id=callback.from_user.id, caption=publication['publication_type']['caption_text'], document=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(pub_type='document', post_id=publication['id']))
         await callback.message.answer(text='Если публикации закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых', reply_markup=Admin_Keyboards.pub_refresh())
         await state.set_state(Admin_states.post_publication)
+    elif callback.data == 'op_channel_join':
+        await callback.answer(text="Вы перешли в открытый канал")
+    elif callback.data == 'coord_chat_join':
+        await callback.answer(text='Вы перешли в чат координаторов')
+    elif callback.data == 'sections_join':
+        await callback.answer(text='Вы перешли в разделы форм')
+        
     
 
 

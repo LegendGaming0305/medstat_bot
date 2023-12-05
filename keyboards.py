@@ -151,7 +151,6 @@ class Owner_Keyboards():
 class Admin_Keyboards():
 
     def main_menu() -> InlineKeyboardMarkup:
-        from non_script_files.config import FORMS
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
@@ -161,10 +160,16 @@ class Admin_Keyboards():
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
         registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
         publications = InlineKeyboardButton(text='Проверить публикации', callback_data='publications')
+        open_chan = InlineKeyboardButton(text="Открытый канал", callback_data='op_channel_join', url="https://t.me/+11PBfYkF3Fs0OTIy")
+        coord_chat = InlineKeyboardButton(text='Чат координаторов', callback_data='coord_chat_join', url="https://t.me/+zbz0lQoK6Fo2NjBi")
+        sections = InlineKeyboardButton(text="Разделы форм", callback_data='sections_join', url="https://t.me/+cNQvBD_FWpQxZWRi")
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
-                                    publications)
+                                    publications,
+                                    open_chan,
+                                    coord_chat,
+                                    sections)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        

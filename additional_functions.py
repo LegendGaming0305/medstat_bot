@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram import types
 import pandas as pd
 from db_actions import Database
+from asyncio import sleep
 
 db = Database()
 
@@ -325,6 +326,11 @@ def extracting_query_info(query):
             query_info['caption_text'] = 'Null'
 
         return query_info, file_id
+    
+async def message_delition(*args, time_sleep = 15):
+            for arg in args:
+                await sleep(time_sleep)
+                await arg.delete()
         
                
         

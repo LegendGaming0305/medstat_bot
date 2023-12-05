@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramBadRequest
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -341,31 +341,37 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     chat_id = callback.from_user.id
     from main import bot
     if callback.data == 'npa':
-        await bot.send_document(chat_id=chat_id,
+        doc_1 = await bot.send_document(chat_id=chat_id,
                                 document='BQACAgIAAxkBAAIGK2VXPgU1Hi2v-89gziIEgLjchFaQAAJNOAACah64Sl1aSOIk1wABwTME')
-        await bot.send_document(chat_id=chat_id,
+        doc_2 = await bot.send_document(chat_id=chat_id,
                                 document='BQACAgIAAxkBAAIGLGVXPhfXBvgGqPh1GQJJCgddAxd8AAJPOAACah64SmHR0Xxwyd3YMwQ')
-        await bot.send_document(chat_id=chat_id,
+        doc_3 = await bot.send_document(chat_id=chat_id,
                                 document='BQACAgIAAxkBAAIGLWVXPmXLgVj-5VDpQsHk47vk2ti3AAJUOAACah64SmgjWufzx-ZPMwQ')
-        await bot.send_document(chat_id=chat_id,
+        doc_4 = await bot.send_document(chat_id=chat_id,
                                 document='BQACAgIAAxkBAAIGLmVXPy-afxHcCQqjJLwljUV31m9DAAJbOAACah64Sn6s7HayeS3aMwQ')
+        await message_delition(doc_1, doc_2, doc_3, doc_4)
     elif callback.data == 'main_menu':
         await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     elif callback.data == 'medstat':
-        await bot.send_document(chat_id=chat_id,
+        doc_1 = await bot.send_document(chat_id=chat_id,
                                 document='BQACAgIAAxkBAAIGKmVXPf_lixoXHDYS_7vCr9XYg7ZoAAJKOAACah64Sq9HPjDgDOFQMwQ')
+        await message_delition()
     elif callback.data == 'statistic':
-        await bot.send_document(chat_id=chat_id,
+
+        doc_1 = await bot.send_document(chat_id=chat_id,
                                 document='BQACAgIAAxkBAAIGJmVXOsMcgevHefPEnQj20Z9ACBUJAAIhOAACah64SvNHf-P94iWtMwQ')
-        await bot.send_document(chat_id=chat_id, 
+        doc_2 = await bot.send_document(chat_id=chat_id, 
                                 document='BQACAgIAAxkBAAIGJ2VXO_9pbBC9S3lWkC_LeDQMxuJPAAI0OAACah64SvOhsb6UYn1GMwQ')
-        await bot.send_document(chat_id=chat_id, 
+        doc_3 = await bot.send_document(chat_id=chat_id, 
                                 document='BQACAgIAAxkBAAIGKGVXPA5hnyS3pN5TKXPzuh7LybSWAAI2OAACah64ShEL9uIIerUSMwQ')
-        await bot.send_document(chat_id=chat_id, 
+        doc_4 = await bot.send_document(chat_id=chat_id, 
                                 document='BQACAgIAAxkBAAIGKWVXPDWvQIvOXfpnGF4eyOAnFpjIAAI5OAACah64SsJyNl0X5tqkMwQ')
+        
+        await message_delition(doc_1, doc_2, doc_3, doc_4)
     elif callback.data == 'method_recommendations':
-        await bot.send_document(chat_id=chat_id, 
+        doc_1 = await bot.send_document(chat_id=chat_id, 
                                 document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
+        await message_delition(doc_1)
     elif callback.data == 'registration':
         await state.set_state(User_states.reg_organisation)
         markup = await User_Keyboards.create_district_buttons()
@@ -378,7 +384,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'specialist_panel':
         await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.main_menu())
     elif callback.data == 'link_open_chat':
-        await callback.message.answer('Ссылка на открытый канал - https://t.me/open_chat_medstat')
+        await callback.answer('Вы перешли в открытый канал')
     elif callback.data == 'link_razdel_chat':
         await getting_link(callback, state)
     elif callback.data == 'chats_and_channels':
@@ -421,7 +427,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.answer(text='Вы перешли в чат координаторов')
     elif callback.data == 'sections_join':
         await callback.answer(text='Вы перешли в разделы форм')
-        
+
     
 
 

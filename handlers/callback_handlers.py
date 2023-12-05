@@ -244,7 +244,7 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         await state.clear()
     else:
         await state.update_data(tag=callback.data)
-        await callback.answer(text='Вы выбрали форму для отправки. Теперь, введите Ваш вопрос', show_alert=True)
+        await callback.message.edit_text(text='Вы выбрали форму для отправки. Теперь, введите Ваш вопрос')
         await state.set_state(User_states.fuzzy_process)
 
 @router.callback_query(Admin_states.registration_process)
@@ -280,12 +280,6 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
         information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nДата регистрации: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
-    elif callback_data == 'registration_db':
-        from main import bot
-        await creating_excel_users()
-        excel = FSInputFile('miac_output.xlsx')
-        await bot.send_document(chat_id=callback.from_user.id,
-                                document=excel)
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
 
@@ -451,6 +445,12 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.answer(text='Вы перешли в чат координаторов')
     elif callback.data == 'sections_join':
         await callback.answer(text='Вы перешли в разделы форм')
+    elif callback.data == 'registration_db':
+        from main import bot
+        await creating_excel_users()
+        excel = FSInputFile('miac_output.xlsx')
+        await bot.send_document(chat_id=callback.from_user.id,
+                                document=excel)
 
     
 

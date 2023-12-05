@@ -265,7 +265,7 @@ async def creating_excel_users() -> None:
     from main import db
     df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 
                                                               'Должность', 'Организация', 'Дата регистрации'])
-    df_output = df.loc[:, ['Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
+    df_output = df.loc[:, ['user_id', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
     df_output.to_excel('miac_output.xlsx')
 
 def extracting_query_info(query):

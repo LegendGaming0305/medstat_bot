@@ -4,3 +4,4 @@ venv
 *.pptx
 *.xlsx
 thread.txt
+__pycache__/

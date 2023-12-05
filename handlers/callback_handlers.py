@@ -244,7 +244,7 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         await state.clear()
     else:
         await state.update_data(tag=callback.data)
-        await callback.message.edit_text(text='Вы выбрали форму для отправки. Теперь, введите Ваш вопрос')
+        await callback.answer(text='Вы выбрали форму для отправки. Теперь, введите Ваш вопрос', show_alert=True)
         await state.set_state(User_states.fuzzy_process)
 
 @router.callback_query(Admin_states.registration_process)

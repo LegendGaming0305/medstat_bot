@@ -196,7 +196,11 @@ class Database():
             await self.create_connection()
          
         users_rows = await self.connection.fetch("""SELECT registration_process_id FROM low_priority_users WHERE registration_state = 'Pending'""")
-        [user_reg_forms.append(await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
+        [user_reg_forms.append(await self.connection.fetchrow('''SELECT registration_process.*, regions.region_name
+                                                              FROM registration_process
+                                                              JOIN miacs ON registration_process.subject_name = miacs.miac_name
+                                                              JOIN regions ON miacs.id = regions.miac_id
+                                                              WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
 
         return users_rows, user_reg_forms 
     

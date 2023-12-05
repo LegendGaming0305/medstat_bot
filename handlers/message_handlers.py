@@ -122,13 +122,15 @@ async def channelt_id_extraction(post: types.Message):
 async def chat_id_extraction(message: types.Message):
     save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}''')
 
-@router.message(F.text.contains('#данные'))
+@router.message(F.text.contains('8') & F.text.contains('9') | F.text.contains('+7') & F.chat.id == -1002033917658)
 async def sending_information(message: types.Message) -> None:
     '''
     Отправка данных админу из чата координаторов
     '''
     from main import bot
-    await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные {message.text}')
+    forward = await bot.send_message(chat_id=869012176, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\n{message.text}')
+    await bot.pin_chat_message(chat_id=869012176, message_id=forward.message_id)
+    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 @router.message(F.new_chat_member & F.chat.id == -1002033917658)
 async def process_new_member(update: types.ChatMemberUpdated) -> None:
@@ -137,4 +139,4 @@ async def process_new_member(update: types.ChatMemberUpdated) -> None:
     '''
     from main import bot
     await bot.send_message(chat_id=-1002033917658,
-                           text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99 #данные"')
+                           text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99"')

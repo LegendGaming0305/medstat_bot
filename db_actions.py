@@ -34,8 +34,7 @@ class Database():
                                       publication_format PUBLICATION_FORMAT,
                                       has_caption BOOL,
                                       caption_text TEXT,
-                                      file_name TEXT,
-                                      file_id INTEGER);
+                                      file_name TEXT);
                             EXCEPTION
                                 WHEN duplicate_object THEN null;
                             END $$;''')
@@ -441,3 +440,16 @@ class Database():
                                       SET publication_status = $1, post_regulator = hp.id
                                       FROM high_priority_users hp
                                       WHERE publication_process.id = $2 """, publication_status, pub_id)
+        
+    async def extract_form_info_by_tag(self, tag_info: str):
+        '''
+        Извлечение данных о форме по тэгу формы
+        '''
+        if self.connection is None:
+            await self.create_connection()
+        
+        form_info = await self.connection.fetchrow("""SELECT ft.*, sf.specialist_id  FROM form_types AS ft
+                                       INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
+                                       WHERE ft.form_tag = $1""", tag_info)
+        return form_info
+

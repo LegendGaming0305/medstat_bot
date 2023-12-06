@@ -37,8 +37,11 @@ async def process_miac_selection(callback: types.CallbackQuery, state: FSMContex
 async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
     callback_data = callback.data
     
-    data = await cache.get(f"questions_pool:{callback.from_user.id}")
-    information = json.loads(data)
+    try:
+        data = await cache.get(f"questions_pool:{callback.from_user.id}")
+        information = json.loads(data)
+    except TypeError:
+        await callback.answer(text="Просим отправить ваш вопрос по указанной вами форме")
 
     if "fuzzy_buttons" in callback_data:
         callback_data = callback_data.split("&") ; callback_data = callback_data[2] ; callback_data = callback_data.split(":") 
@@ -50,6 +53,8 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
     elif callback_data == "back_to_fuzzy":
         keyboard, text = User_Keyboards.fuzzy_buttons_generate(information)
         await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
+    else:
+        await callback.answer(text="Просим отправить ваш вопрос по указанной вами форме")
 
 @router.callback_query(Specialist_states.public_choose_file)
 async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -143,8 +148,8 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         await callback.answer(text='Вы успешно завершили процесс')
         await callback.message.delete()
         message = await callback.message.answer('Теперь вы можете выбирать другие вопросы для ответа')
-        await message_delition(message, time_sleep=10)
         await state.set_state(Specialist_states.choosing_question)
+        await message_delition(message, time_sleep=10)
         
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -244,9 +249,13 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         await state.clear()
     else:
         await state.update_data(tag=callback.data)
-        await callback.answer(text='Вы выбрали форму для отправки. Теперь, введите Ваш вопрос', show_alert=True)
+        form_info = await db.extract_form_info_by_tag(tag_info=callback.data)
+        await state.update_data(form_info=form_info)
+        data = await state.get_data()
+        await callback.answer(text=f'Вы выбрали форму для отправки - {form_info["form_name"]}. Теперь, введите Ваш вопрос', show_alert=True)
+        await callback.message.edit_text(inline_message_id=str(data["menu"].message_id), text=f"Вы выбрали форму для отправки - {form_info['form_name']}. Для возврата в меню, воспользуйтесь кнопкой 'Возврат в главное меню'", reply_markup=User_Keyboards.section_chose().as_markup())
         await state.set_state(User_states.fuzzy_process)
-
+        
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:
     from aiogram import Bot
@@ -341,8 +350,10 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
 
     @access_block_decorator
     async def getting_started(callback: types.CallbackQuery, state: FSMContext):
-        await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму. Для возврата в меню, воспользуйтесь кнопкой "Возврат в главное меню"', reply_markup=User_Keyboards.section_chose().as_markup())
         await state.set_state(User_states.form_choosing)
+        menu_info = await callback.message.edit_text(text='Добро пожаловать в меню вопросных-форм. Выберете нужную форму. Для возврата в меню, воспользуйтесь кнопкой "Возврат в главное меню"', reply_markup=User_Keyboards.section_chose().as_markup())
+        await state.update_data(menu=menu_info)
+        
     
     @access_block_decorator
     async def getting_link(callback: types.CallbackQuery, state: FSMContext):
@@ -352,49 +363,49 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     from main import bot
     if callback.data == 'npa':
         await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
-        doc_1 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGK2VXPgU1Hi2v-89gziIEgLjchFaQAAJNOAACah64Sl1aSOIk1wABwTME')
-        doc_2 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGLGVXPhfXBvgGqPh1GQJJCgddAxd8AAJPOAACah64SmHR0Xxwyd3YMwQ')
-        doc_3 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGLWVXPmXLgVj-5VDpQsHk47vk2ti3AAJUOAACah64SmgjWufzx-ZPMwQ')
-        doc_4 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGLmVXPy-afxHcCQqjJLwljUV31m9DAAJbOAACah64Sn6s7HayeS3aMwQ')
-        # doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
-        # doc_2 = await bot.send_message(chat_id=chat_id, text="документ 2")
-        # doc_3 = await bot.send_message(chat_id=chat_id, text="документ 3")
-        # doc_4 = await bot.send_message(chat_id=chat_id, text="документ 4")
+        # doc_1 = await bot.send_document(chat_id=chat_id,
+        #                         document='BQACAgIAAxkBAAIGK2VXPgU1Hi2v-89gziIEgLjchFaQAAJNOAACah64Sl1aSOIk1wABwTME')
+        # doc_2 = await bot.send_document(chat_id=chat_id,
+        #                         document='BQACAgIAAxkBAAIGLGVXPhfXBvgGqPh1GQJJCgddAxd8AAJPOAACah64SmHR0Xxwyd3YMwQ')
+        # doc_3 = await bot.send_document(chat_id=chat_id,
+        #                         document='BQACAgIAAxkBAAIGLWVXPmXLgVj-5VDpQsHk47vk2ti3AAJUOAACah64SmgjWufzx-ZPMwQ')
+        # doc_4 = await bot.send_document(chat_id=chat_id,
+        #                         document='BQACAgIAAxkBAAIGLmVXPy-afxHcCQqjJLwljUV31m9DAAJbOAACah64Sn6s7HayeS3aMwQ')
+        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
+        doc_2 = await bot.send_message(chat_id=chat_id, text="документ 2")
+        doc_3 = await bot.send_message(chat_id=chat_id, text="документ 3")
+        doc_4 = await bot.send_message(chat_id=chat_id, text="документ 4")
         await message_delition(doc_1, doc_2, doc_3, doc_4)
     elif callback.data == 'main_menu':
         await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     elif callback.data == 'medstat':
         await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
-        doc_1 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGKmVXPf_lixoXHDYS_7vCr9XYg7ZoAAJKOAACah64Sq9HPjDgDOFQMwQ')
-        # doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
+        # doc_1 = await bot.send_document(chat_id=chat_id,
+        #                         document='BQACAgIAAxkBAAIGKmVXPf_lixoXHDYS_7vCr9XYg7ZoAAJKOAACah64Sq9HPjDgDOFQMwQ')
+        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
         await message_delition(doc_1)
     elif callback.data == 'statistic':
         await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
-        doc_1 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGJmVXOsMcgevHefPEnQj20Z9ACBUJAAIhOAACah64SvNHf-P94iWtMwQ')
-        doc_2 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGJ2VXO_9pbBC9S3lWkC_LeDQMxuJPAAI0OAACah64SvOhsb6UYn1GMwQ')
-        doc_3 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGKGVXPA5hnyS3pN5TKXPzuh7LybSWAAI2OAACah64ShEL9uIIerUSMwQ')
-        doc_4 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGKWVXPDWvQIvOXfpnGF4eyOAnFpjIAAI5OAACah64SsJyNl0X5tqkMwQ')
+        # doc_1 = await bot.send_document(chat_id=chat_id,
+        #                         document='BQACAgIAAxkBAAIGJmVXOsMcgevHefPEnQj20Z9ACBUJAAIhOAACah64SvNHf-P94iWtMwQ')
+        # doc_2 = await bot.send_document(chat_id=chat_id, 
+        #                         document='BQACAgIAAxkBAAIGJ2VXO_9pbBC9S3lWkC_LeDQMxuJPAAI0OAACah64SvOhsb6UYn1GMwQ')
+        # doc_3 = await bot.send_document(chat_id=chat_id, 
+        #                         document='BQACAgIAAxkBAAIGKGVXPA5hnyS3pN5TKXPzuh7LybSWAAI2OAACah64ShEL9uIIerUSMwQ')
+        # doc_4 = await bot.send_document(chat_id=chat_id, 
+        #                         document='BQACAgIAAxkBAAIGKWVXPDWvQIvOXfpnGF4eyOAnFpjIAAI5OAACah64SsJyNl0X5tqkMwQ')
         
-        # doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
-        # doc_2 = await bot.send_message(chat_id=chat_id, text="документ 2")
-        # doc_3 = await bot.send_message(chat_id=chat_id, text="документ 3")
-        # doc_4 = await bot.send_message(chat_id=chat_id, text="документ 4")
+        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
+        doc_2 = await bot.send_message(chat_id=chat_id, text="документ 2")
+        doc_3 = await bot.send_message(chat_id=chat_id, text="документ 3")
+        doc_4 = await bot.send_message(chat_id=chat_id, text="документ 4")
 
         await message_delition(doc_1, doc_2, doc_3, doc_4)
     elif callback.data == 'method_recommendations':
         await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
-        doc_1 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
-        # doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
+        # doc_1 = await bot.send_document(chat_id=chat_id, 
+        #                         document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
+        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
         await message_delition(doc_1)
     elif callback.data == 'registration':
         await state.set_state(User_states.reg_organisation)
@@ -451,6 +462,15 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.answer(text='Вы перешли в чат координаторов')
     elif callback.data == 'sections_join':
         await callback.answer(text='Вы перешли в разделы форм')
+
+
+
+
+
+
+
+
+
 
     
 

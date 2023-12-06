@@ -252,7 +252,9 @@ async def question_redirect(message: types.Message, state: FSMContext):
     data = await state.get_data()
     user_question = data['user_question']
     await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'], message_id=message.message_id)
-    await message.reply(text='Ваш вопрос передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+    await state.set_state(User_states.form_choosing)
+    data = await state.get_data()
+    await message.reply(text=f'Ваш вопрос по форме {data["form_info"]["form_name"]} передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
     await state.set_state(User_states.form_choosing)
 
     # await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())

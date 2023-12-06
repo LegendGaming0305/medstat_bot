@@ -128,8 +128,8 @@ async def sending_information(message: types.Message) -> None:
     Отправка данных админу из чата координаторов
     '''
     from main import bot
-    forward = await bot.send_message(chat_id=869012176, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\n{message.text}')
-    await bot.pin_chat_message(chat_id=869012176, message_id=forward.message_id)
+    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\n{message.text}')
+    await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 @router.message(F.new_chat_member & F.chat.id == -1002033917658)

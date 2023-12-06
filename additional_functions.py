@@ -9,6 +9,9 @@ from aiogram import types
 import pandas as pd
 from db_actions import Database
 from asyncio import sleep
+import os
+from aiogram.enums import ParseMode
+from aiogram import Bot
 
 db = Database()
 
@@ -133,7 +136,7 @@ def user_registration_decorator(func):
                     case "OWNER":
                         await prior_keyboard_send(key_type=Owner_Keyboards.owner_starting_keyboard.as_markup(), row=row)
                     case "SPECIALIST":
-                        await prior_keyboard_send(key_type=Specialist_keyboards.questions_gen(), row=row)
+                        await prior_keyboard_send(key_type=Specialist_keyboards.main_menu(), row=row)
                 
             if prior_user == False:
                 from main import db
@@ -267,7 +270,7 @@ async def creating_excel_users() -> None:
     from main import db
     df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 
                                                               'Должность', 'Организация', 'Дата регистрации'])
-    df_output = df.loc[:, ['Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
+    df_output = df.loc[:, ['user_id', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
     df_output.to_excel('miac_output.xlsx')
 
 def extracting_query_info(query):
@@ -337,7 +340,13 @@ async def message_delition(*args, time_sleep = 20):
             for arg in args:
                 await arg.delete()
         
-               
+async def document_loading(button_name: str, doc_info: dict = {}):
+    from non_script_files.config import API_TELEGRAM
+
+    for doc_id, file_format in doc_info.items():
+        file_info = await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).get_file(doc_id)
+        await db.uploading_file(file_id=file_info.file_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
+        
         
 
 

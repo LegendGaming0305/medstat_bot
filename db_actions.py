@@ -124,6 +124,14 @@ class Database():
                                       post_regulator BIGINT CHECK (post_regulator > 0),
                                       FOREIGN KEY (post_suggester) REFERENCES high_priority_users (id),
                                       FOREIGN KEY (post_regulator) REFERENCES high_priority_users (id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS admin_file_uploading (
+                                      id SERIAL PRIMARY KEY,
+                                      file_id VARCHAR NOT NULL,
+                                      file_format PUBLICATION_TYPE,
+                                      upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      button_type VARCHAR(50) NOT NULL,
+                                      admin_id BIGINT CHECK (admin_id > 0) NOT NULL,
+                                      FOREIGN KEY (admin_id) REFERENCES high_priority_users (id))''')
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -195,7 +203,11 @@ class Database():
             await self.create_connection()
          
         users_rows = await self.connection.fetch("""SELECT registration_process_id FROM low_priority_users WHERE registration_state = 'Pending'""")
-        [user_reg_forms.append(await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
+        [user_reg_forms.append(await self.connection.fetchrow('''SELECT registration_process.*, regions.region_name
+                                                              FROM registration_process
+                                                              JOIN miacs ON registration_process.subject_name = miacs.miac_name
+                                                              JOIN regions ON miacs.id = regions.miac_id
+                                                              WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
 
         return users_rows, user_reg_forms 
     
@@ -453,3 +465,30 @@ class Database():
                                        WHERE ft.form_tag = $1""", tag_info)
         return form_info
 
+    async def get_subject_name(self, user_id: int) -> str:
+        '''
+        Возврат имени субьекта
+        '''
+        if self.connection is None:
+            await self.create_connection()
+
+        result = await self.connection.fetchval('''SELECT regions.region_name
+                                                FROM regions
+                                                JOIN miacs ON regions.miac_id = miacs.id
+                                                JOIN registration_process rp ON miacs.miac_name = rp.subject_name
+                                                WHERE rp.user_id = $1''', user_id)
+        return result
+
+    async def uploading_file(self, file_id: str, button_type: str, upload_tuple: tuple, admin_id: int = 4):
+        if self.connection is None:
+            await self.create_connection()
+        
+        await self.connection.execute('''INSERT INTO admin_file_uploading (file_id, file_format, button_type, admin_id) VALUES 
+                                      ($1, ROW($2, $3, $4, $5), $6, $7)''', file_id, upload_tuple[0], upload_tuple[2], upload_tuple[3], upload_tuple[1], button_type, admin_id)
+
+    async def loading_files(self, button_type: str):
+        if self.connection is None:
+            await self.create_connection()
+        
+        files_info = await self.connection.fetch('''SELECT * FROM admin_file_uploading WHERE button_type = $1''', button_type)
+        return files_info

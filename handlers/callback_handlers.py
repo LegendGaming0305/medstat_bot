@@ -5,11 +5,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile
 import json
 from aiogram.exceptions import TelegramBadRequest
+import os 
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
 from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition
+from additional_functions import document_loading
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -289,12 +291,6 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
         information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nДата регистрации: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
-    elif callback_data == 'registration_db':
-        from main import bot
-        await creating_excel_users()
-        excel = FSInputFile('miac_output.xlsx')
-        await bot.send_document(chat_id=callback.from_user.id,
-                                document=excel)
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
 
@@ -340,13 +336,42 @@ async def process_open_chat_publication(callback: types.CallbackQuery, state: FS
         await callback.message.answer(text='Если публикации закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых', reply_markup=Admin_Keyboards.pub_refresh())
         await state.set_state(Admin_states.post_publication)
         
+@router.callback_query(Admin_states.file_loading)
+async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
+    if callback.data == "npa":
+        await state.update_data(folder_type="npa")
+        data = await state.get_data()
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+    elif callback.data == "medstat":
+        await state.update_data(folder_type="medstat")
+        data = await state.get_data()
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+    elif callback.data == "statistic":
+        await state.update_data(folder_type="statistic")
+        data = await state.get_data()
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+    elif callback.data == "method_recommendations":
+        await state.update_data(folder_type="method_recommendations")
+        data = await state.get_data()
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+    # elif callback.data == "back":
+    #     data = await state.get_data()
+    #     menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
+    #     await state.update_data(inline_menu=menu)
+    elif callback.data == "cancel_loading":
+        from cache_container import cache
+        data = await state.get_data()
+        cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
+        await document_loading(button_name=data['folder_type'], doc_info=cached_data)
+        menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
+        await state.clear()
+        await state.update_data(main_menu=menu)
+
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок user-a
     '''
-
-    TIME_WAIT = 20
 
     @access_block_decorator
     async def getting_started(callback: types.CallbackQuery, state: FSMContext):
@@ -361,8 +386,13 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
 
     chat_id = callback.from_user.id
     from main import bot
-    if callback.data == 'npa':
-        await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
+
+    if callback.data == 'main_menu':
+        await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+    elif callback.data == 'npa':
+        file_info = await db.loading_files(button_type='npa')
+        for row in file_info:
+            await bot.send_document(chat_id=chat_id, document=row["file_id"])
         # doc_1 = await bot.send_document(chat_id=chat_id,
         #                         document='BQACAgIAAxkBAAIGK2VXPgU1Hi2v-89gziIEgLjchFaQAAJNOAACah64Sl1aSOIk1wABwTME')
         # doc_2 = await bot.send_document(chat_id=chat_id,
@@ -371,21 +401,16 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         #                         document='BQACAgIAAxkBAAIGLWVXPmXLgVj-5VDpQsHk47vk2ti3AAJUOAACah64SmgjWufzx-ZPMwQ')
         # doc_4 = await bot.send_document(chat_id=chat_id,
         #                         document='BQACAgIAAxkBAAIGLmVXPy-afxHcCQqjJLwljUV31m9DAAJbOAACah64Sn6s7HayeS3aMwQ')
-        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
-        doc_2 = await bot.send_message(chat_id=chat_id, text="документ 2")
-        doc_3 = await bot.send_message(chat_id=chat_id, text="документ 3")
-        doc_4 = await bot.send_message(chat_id=chat_id, text="документ 4")
-        await message_delition(doc_1, doc_2, doc_3, doc_4)
-    elif callback.data == 'main_menu':
-        await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     elif callback.data == 'medstat':
-        await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
+        file_info = await db.loading_files(button_type='medstat')
+        for row in file_info:
+            await bot.send_document(chat_id=chat_id, document=row["file_id"])
         # doc_1 = await bot.send_document(chat_id=chat_id,
         #                         document='BQACAgIAAxkBAAIGKmVXPf_lixoXHDYS_7vCr9XYg7ZoAAJKOAACah64Sq9HPjDgDOFQMwQ')
-        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
-        await message_delition(doc_1)
     elif callback.data == 'statistic':
-        await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
+        file_info = await db.loading_files(button_type='statistic')
+        for row in file_info:
+            await bot.send_document(chat_id=chat_id, document=row["file_id"])
         # doc_1 = await bot.send_document(chat_id=chat_id,
         #                         document='BQACAgIAAxkBAAIGJmVXOsMcgevHefPEnQj20Z9ACBUJAAIhOAACah64SvNHf-P94iWtMwQ')
         # doc_2 = await bot.send_document(chat_id=chat_id, 
@@ -394,19 +419,12 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         #                         document='BQACAgIAAxkBAAIGKGVXPA5hnyS3pN5TKXPzuh7LybSWAAI2OAACah64ShEL9uIIerUSMwQ')
         # doc_4 = await bot.send_document(chat_id=chat_id, 
         #                         document='BQACAgIAAxkBAAIGKWVXPDWvQIvOXfpnGF4eyOAnFpjIAAI5OAACah64SsJyNl0X5tqkMwQ')
-        
-        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
-        doc_2 = await bot.send_message(chat_id=chat_id, text="документ 2")
-        doc_3 = await bot.send_message(chat_id=chat_id, text="документ 3")
-        doc_4 = await bot.send_message(chat_id=chat_id, text="документ 4")
-
-        await message_delition(doc_1, doc_2, doc_3, doc_4)
     elif callback.data == 'method_recommendations':
-        await callback.answer(text=f"Загружаемые документы удалятся через {TIME_WAIT} секунд", show_alert=True)
+        file_info = await db.loading_files(button_type='method_recommendations')
+        for row in file_info:
+            await bot.send_document(chat_id=chat_id, document=row["file_id"])
         # doc_1 = await bot.send_document(chat_id=chat_id, 
         #                         document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
-        doc_1 = await bot.send_message(chat_id=chat_id, text="документ 1")
-        await message_delition(doc_1)
     elif callback.data == 'registration':
         await state.set_state(User_states.reg_organisation)
         markup = await User_Keyboards.create_district_buttons()
@@ -415,7 +433,8 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await getting_started(callback, state)
     elif callback.data == 'admin_panel':
         await state.clear()
-        await callback.message.edit_text(text="Добро пожаловать в Админ-панель", reply_markup=Admin_Keyboards.main_menu())
+        menu = await callback.message.edit_text(text="Добро пожаловать в Админ-панель", reply_markup=Admin_Keyboards.main_menu())
+        await state.update_data(main_menu=menu)
     elif callback.data == 'specialist_panel':
         await callback.message.edit_text(text="Добро пожаловать в Специалист-панель", reply_markup=Specialist_keyboards.main_menu())
     elif callback.data == 'link_open_chat':
@@ -462,7 +481,21 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.answer(text='Вы перешли в чат координаторов')
     elif callback.data == 'sections_join':
         await callback.answer(text='Вы перешли в разделы форм')
-
+    elif callback.data == 'registration_db':
+        from main import bot
+        await creating_excel_users()
+        excel = FSInputFile('miac_output.xlsx')
+        await bot.send_document(chat_id=callback.from_user.id,
+                                document=excel)
+    elif callback.data == 'load_file':
+        data = await state.get_data()
+        await state.set_state(Admin_states.file_loading)
+        try:
+            menu = await callback.message.edit_text(inline_message_id=str(data["main_menu"].message_id), text="Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
+            await state.update_data(inline_menu=menu)
+        except KeyError:
+            menu = await callback.message.answer(text="Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
+            await state.update_data(inline_menu=menu)
 
 
 

@@ -163,13 +163,15 @@ class Admin_Keyboards():
         open_chan = InlineKeyboardButton(text="Открытый канал", callback_data='op_channel_join', url="https://t.me/+11PBfYkF3Fs0OTIy")
         coord_chat = InlineKeyboardButton(text='Чат координаторов', callback_data='coord_chat_join', url="https://t.me/+zbz0lQoK6Fo2NjBi")
         sections = InlineKeyboardButton(text="Разделы форм", callback_data='sections_join', url="https://t.me/+cNQvBD_FWpQxZWRi")
+        file_button = InlineKeyboardButton(text="Загрузить файлы", callback_data='load_file')
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
                                     publications,
                                     open_chan,
                                     coord_chat,
-                                    sections)
+                                    sections,
+                                    file_button)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
@@ -198,7 +200,7 @@ class Admin_Keyboards():
         '''
         unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
         generated_keyboard = InlineKeyboardBuilder()
-        buttons_data = [InlineKeyboardButton(text=f'Пользователь {registration_forms[i][1]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+        buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
         generated_keyboard.add(*[elem for elem in buttons_data])
         generated_keyboard.adjust(3, repeat=True)
 
@@ -223,6 +225,25 @@ class Admin_Keyboards():
         pub_ref_kb.add(InlineKeyboardButton(text='Проверить публикации', callback_data='publications'))
         pub_ref_kb.adjust(1)
         return pub_ref_kb.as_markup()
+
+    def file_loading(cancell: bool = False) -> InlineKeyboardBuilder():
+        if cancell == False:
+            file_kb = InlineKeyboardBuilder()
+            npa_button = InlineKeyboardButton(text='НПА', callback_data='npa')
+            medstat_button = InlineKeyboardButton(text='Медстат', callback_data='medstat')
+            statistic_button = InlineKeyboardButton(text='Статистика', callback_data='statistic')
+            method_recommendations_button = InlineKeyboardButton(text='Методические рекомендации', callback_data='method_recommendations')
+            file_kb.add(npa_button, medstat_button, statistic_button, method_recommendations_button)
+            file_kb.adjust(1)
+            return file_kb.as_markup()
+        else:
+            file_kb = InlineKeyboardBuilder()
+            cancel = InlineKeyboardButton(text="Завершить загрузку", callback_data="cancel_loading")
+            # back = InlineKeyboardButton(text="Назад", callback_data="back")
+            file_kb.add(cancel)
+            file_kb.adjust(1)
+            return file_kb.as_markup()
+
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------

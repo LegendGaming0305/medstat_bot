@@ -133,7 +133,7 @@ def user_registration_decorator(func):
                     case "OWNER":
                         await prior_keyboard_send(key_type=Owner_Keyboards.owner_starting_keyboard.as_markup(), row=row)
                     case "SPECIALIST":
-                        await prior_keyboard_send(key_type=Specialist_keyboards.questions_gen(), row=row)
+                        await prior_keyboard_send(key_type=Specialist_keyboards.main_menu(), row=row)
                 
             if prior_user == False:
                 from main import db

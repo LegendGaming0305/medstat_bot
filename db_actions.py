@@ -34,8 +34,7 @@ class Database():
                                       publication_format PUBLICATION_FORMAT,
                                       has_caption BOOL,
                                       caption_text TEXT,
-                                      file_name TEXT,
-                                      file_id INTEGER);
+                                      file_name TEXT);
                             EXCEPTION
                                 WHEN duplicate_object THEN null;
                             END $$;''')
@@ -445,3 +444,17 @@ class Database():
                                       SET publication_status = $1, post_regulator = hp.id
                                       FROM high_priority_users hp
                                       WHERE publication_process.id = $2 """, publication_status, pub_id)
+        
+    async def get_subject_name(self, user_id: int) -> str:
+        '''
+        Возврат имени субьекта
+        '''
+        if self.connection is None:
+            await self.create_connection()
+
+        result = await self.connection.fetchval('''SELECT regions.region_name
+                                                FROM regions
+                                                JOIN miacs ON regions.miac_id = miacs.id
+                                                JOIN registration_process rp ON miacs.miac_name = rp.subject_name
+                                                WHERE rp.user_id = $1''', user_id)
+        return result

@@ -122,13 +122,14 @@ async def channelt_id_extraction(post: types.Message):
 async def chat_id_extraction(message: types.Message):
     save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}''')
 
-@router.message(F.text.contains('8') & F.text.contains('9') | F.text.contains('+7') & F.chat.id == -1002033917658)
+@router.message(F.text.contains('8') | F.text.contains('9') | F.text.contains('+7'))
 async def sending_information(message: types.Message) -> None:
     '''
     Отправка данных админу из чата координаторов
     '''
     from main import bot
-    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\n{message.text}')
+    subject = await db.get_subject_name(user_id=message.from_user.id)
+    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
     await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 

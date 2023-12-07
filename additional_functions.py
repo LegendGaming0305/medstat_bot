@@ -189,7 +189,8 @@ async def create_questions(specialist_id: int) -> tuple[dict]:
     
         data = {'question': question_info[1],
                 'lp_user_id': question_info[2],
-                'form_name': question_info[3]}
+                'form_name': question_info[3],
+                'message_id': question_info[4]}
         
         questions.append(data)
     return tuple(questions)     

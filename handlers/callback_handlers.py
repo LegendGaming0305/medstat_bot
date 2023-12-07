@@ -210,7 +210,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
+            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
@@ -221,9 +221,11 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             pass
     elif callback.data == 'choose_question':
         markup = InlineKeyboardBuilder()
-        question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip())
-        result_check = await db.check_question(question_id=question_id)
-        lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[3].strip())
+        message_id = int(callback.message.text.split(':')[4][1:].strip())
+        question_id = await db.get_question_id(question=callback.message.text.split(':')[3].strip(),
+                                               message_id=message_id)
+        result_check = await db.check_question(question_id=question_id, message_id=message_id)
+        lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[3].strip(), message_id=message_id)
         if result_check == 'Вопрос взят':
             await callback.message.edit_text(f'<b>Вопрос взят</b>\n{callback.message.html_text}')
             await callback.message.answer('Выберите другой вопрос, так как на этот уже отвечает другой специалист')
@@ -493,7 +495,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}', 
+            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',

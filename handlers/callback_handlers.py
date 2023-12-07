@@ -354,16 +354,18 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data(folder_type="method_recommendations")
         data = await state.get_data()
         await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
-    # elif callback.data == "back":
-    #     data = await state.get_data()
-    #     menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
-    #     await state.update_data(inline_menu=menu)
     elif callback.data == "cancel_loading":
         from cache_container import cache
         data = await state.get_data()
-        cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
-        await document_loading(button_name=data['folder_type'], doc_info=cached_data)
+        
+        try:
+            cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
+            await document_loading(button_name=data['folder_type'], doc_info=cached_data)
+        except TypeError:
+            pass
+
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
+        await state.set_state(Admin_states.file_loading)
         await state.update_data(inline_menu=menu)
 
 @router.callback_query()

@@ -31,8 +31,8 @@ async def exiting_fuzzy(message: types.Message, state: FSMContext):
             # await message.reply("Успешный возврат меню...", reply_markup=ReplyKeyboardRemove())
             await state.clear()
         await process_start(message, state)
-    elif "Не нашёл подходящего вопроса" in message.text:
-        await question_redirect(message, state)
+    # elif "Не нашёл подходящего вопроса" in message.text:
+    #     await question_redirect(message, state)
 
 @router.message(User_states.reg_organisation)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
@@ -66,7 +66,7 @@ async def process_question_input(message: types.Message, state: FSMContext) -> N
     '''
     Обработка вопроса через fuzzy_handler
     '''
-    await state.update_data(user_question=message.text)
+    await state.update_data(user_question=message.text, user_message=message)
     bot_answer, bot_questions = fuzzy_handler(user_question=message.text, pattern=QUESTION_PATTERN)
     serialized_questions = json.dumps(bot_questions)
     await cache.set(f"questions_pool:{message.from_user.id}", serialized_questions)
@@ -83,7 +83,8 @@ async def process_question_input(message: types.Message, state: FSMContext) -> N
             await state.clear()
     else:
         keyboard, text = User_Keyboards.fuzzy_buttons_generate(bot_questions)
-        await message.answer(text=f"Возможно вы имели в виду:\n{text}", reply_to_message_id=message.message_id, reply_markup=keyboard.as_markup())
+        suggestion_menu = await message.answer(text=f"Возможно вы имели в виду:\n{text}", reply_to_message_id=message.message_id, reply_markup=keyboard.as_markup())
+        await state.update_data(suggestion_menu=suggestion_menu)
         await message.answer(text=f"""Выберете из представленных выше вопросов наиболее схожий с вашим.\nВ случае, если вы не удовлетворены предложенными вариантами, нажмите 'Не нашёл подходящего вопроса'.""", reply_markup=User_Keyboards.out_of_fuzzy_questions())
 
 @router.message(Specialist_states.answer_question)

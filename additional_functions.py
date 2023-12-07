@@ -12,6 +12,7 @@ from asyncio import sleep
 import os
 from aiogram.enums import ParseMode
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 
 db = Database()
 
@@ -249,19 +250,24 @@ def file_reader(file_path: str):
         pattern_text = file.readlines()
         return pattern_text
 
-async def question_redirect(message: types.Message, state: FSMContext):
+async def question_redirect(query, state: FSMContext):
     from states import User_states
     from keyboards import User_Keyboards
     data = await state.get_data()
     user_question = data['user_question']
-    await db.process_question(user_id=message.from_user.id, question=user_question, form=data['tag'], message_id=message.message_id)
+    
+    if isinstance(query, types.Message) == True:
+        await db.process_question(user_id=query.from_user.id, question=user_question, form=data['tag'], message_id=query.message_id)
+    else:
+        await db.process_question(user_id=query.from_user.id, question=user_question, form=data['tag'], message_id=query.message.message_id)
+
     await state.set_state(User_states.form_choosing)
     data = await state.get_data()
-    await message.reply(text=f'Ваш вопрос по форме {data["form_info"]["form_name"]} передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+    try:
+        await query.reply(text=f'Ваш вопрос по форме {data["form_info"]["form_name"]} передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+    except (TelegramBadRequest, AttributeError):
+        pass
     await state.set_state(User_states.form_choosing)
-
-    # await message.answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
-    # await state.clear()
 
 async def creating_excel_users() -> None:
     '''

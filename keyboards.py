@@ -8,8 +8,8 @@ db = Database()
 
 back_to_menu = [[KeyboardButton(text="Возврат в главное меню")]]
 general_kb = ReplyKeyboardMarkup(keyboard=back_to_menu, resize_keyboard=True)
-BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2, '0':'private', '1':'form', '2':'open'}
-
+BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2}
+NUMBER_TO_BUTTONS = {'0':'private', '1':'form', '2':'open'}
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
     
@@ -41,9 +41,9 @@ class User_Keyboards():
             user_starting_keyboard.add(npa_button, 
                         medstat_button, 
                         statistic_button,
-                        method_recommendations_button, 
-                        make_question_button,
+                        method_recommendations_button,
                         open_chat_button,
+                        make_question_button,
                         razdel_chat_button)
         
         return user_starting_keyboard.adjust(1, repeat=True)
@@ -122,13 +122,13 @@ class User_Keyboards():
         back_to_pool.adjust(1, repeat=True)
         return back_to_pool
 
-    def out_of_fuzzy_questions() -> ReplyKeyboardMarkup:
+    def out_of_fuzzy_questions() -> InlineKeyboardBuilder:
         
-        kb = [[KeyboardButton(text="Возврат в главное меню")],
-              [KeyboardButton(text="Не нашёл подходящего вопроса")]]
-        out_of_pool = ReplyKeyboardMarkup(keyboard=kb,
-                                        resize_keyboard=True)
-        return out_of_pool
+        out_of_pool = InlineKeyboardBuilder()
+        not_found = InlineKeyboardButton(text="Не нашёл подходящего вопроса", callback_data="not_found_question")
+        out_of_pool.add(not_found)
+        out_of_pool.adjust(1)
+        return out_of_pool.as_markup()
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 

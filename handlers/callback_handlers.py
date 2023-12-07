@@ -358,14 +358,24 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         from cache_container import cache
         data = await state.get_data()
         
+        match data["folder_type"]:
+            case 'npa':
+                folder_type = "НПА"
+            case 'medstat':
+                folder_type = "Медстат"
+            case 'statistic':
+                folder_type = "Статистика"
+            case 'method_recommendations':
+                folder_type = "Методические рекомендации"
+        
         try:
             cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
             await document_loading(button_name=data['folder_type'], doc_info=cached_data)
+            await cache.set(f"file_sending_process", None)
         except TypeError:
-            pass
+            await callback.answer(text=f"В форму {folder_type} не было загружено файлов")
 
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
-        await state.set_state(Admin_states.file_loading)
         await state.update_data(inline_menu=menu)
 
 @router.callback_query()

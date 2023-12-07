@@ -205,8 +205,7 @@ class Database():
         users_rows = await self.connection.fetch("""SELECT registration_process_id FROM low_priority_users WHERE registration_state = 'Pending'""")
         [user_reg_forms.append(await self.connection.fetchrow('''SELECT registration_process.*, regions.region_name
                                                               FROM registration_process
-                                                              JOIN miacs ON registration_process.subject_name = miacs.miac_name
-                                                              JOIN regions ON miacs.id = regions.miac_id
+                                                              JOIN regions ON registration_process.subject_name = regions.region_name
                                                               WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
 
         return users_rows, user_reg_forms 
@@ -277,7 +276,7 @@ class Database():
         if self.connection is None:
             await self.create_connection()
 
-        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name
+        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message
                                                 FROM questions_forms q
                                                 JOIN form_types ft ON q.section_form = ft.id
                                                 JOIN specialist_forms sf ON ft.id = sf.form_id
@@ -299,10 +298,14 @@ class Database():
             await self.connection.execute('''UPDATE questions_forms SET question_state = 'Accept' WHERE id = ($1)''', question_id)
             await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id)
 
-    async def check_question(self, question_id: int) -> str:
+    async def check_question(self, question_id: int, message_id: int) -> str:
         if self.connection is None:
             await self.create_connection()
-        result = await self.connection.fetchval('''SELECT answer_content FROM answer_process WHERE question_id = $1''', question_id)
+        result = await self.connection.fetchval('''SELECT answer_process.answer_content 
+                                                FROM answer_process
+                                                JOIN questions_forms qf ON answer_process.question_id = qf.id
+                                                WHERE answer_process.question_id = $1 
+                                                AND qf.question_message = $2''', question_id, message_id)
         return result
     
     async def get_question_form(self, lp_user_id: int):
@@ -326,7 +329,7 @@ class Database():
                                                   WHERE federal_district_regions.federal_district_id = $1''', district_id)
             return regions
         elif info_type == 'miac':
-            miac = await self.connection.fetchval('''SELECT miac_name FROM miacs
+            miac = await self.connection.fetchval('''SELECT region_name FROM regions
                                                   WHERE id = $1''', miac_id)
             return miac
         
@@ -353,7 +356,7 @@ class Database():
         
         return resulted_dict, user_name_info, number_of_rows    
         
-    async def get_question_id(self, question: str = None, inputed_question_id: int = 0) -> int:
+    async def get_question_id(self, question: str = None, inputed_question_id: int = 0, message_id: int = 0) -> int:
         if self.connection is None:
             await self.create_connection()
         
@@ -368,14 +371,16 @@ class Database():
             return question_data
         else:
             question_id = await self.connection.fetchval('''SELECT id FROM questions_forms
-                                                     WHERE question_content = $1''', question)
-            return question_id 
-        
-    async def get_user_id(self, question: str) -> int:
+                                                     WHERE question_content = $1 AND question_message = $2''', 
+                                                     question, message_id)
+            return question_id
+
+    async def get_user_id(self, question: str, message_id: int = 0) -> int:
         if self.connection is None:
             await self.create_connection()
         user_id = await self.connection.fetchval('''SELECT lp_user_id FROM questions_forms
-                                                     WHERE question_content = $1''', question)
+                                                     WHERE question_content = $1 AND question_message = $2''', 
+                                                     question, message_id)
         return user_id
 
     async def get_question_message_id(self, question_id: int) -> str:

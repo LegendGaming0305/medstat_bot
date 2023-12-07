@@ -189,7 +189,8 @@ async def create_questions(specialist_id: int) -> tuple[dict]:
     
         data = {'question': question_info[1],
                 'lp_user_id': question_info[2],
-                'form_name': question_info[3]}
+                'form_name': question_info[3],
+                'message_id': question_info[4]}
         
         questions.append(data)
     return tuple(questions)     
@@ -350,8 +351,11 @@ async def document_loading(button_name: str, doc_info: dict = {}):
     from non_script_files.config import API_TELEGRAM
 
     for doc_id, file_format in doc_info.items():
-        file_info = await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).get_file(doc_id)
-        await db.uploading_file(file_id=file_info.file_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
+        try:
+            file_info = await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).get_file(doc_id)
+            await db.uploading_file(file_id=file_info.file_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
+        except TelegramBadRequest:
+            continue
         
         
 

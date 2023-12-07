@@ -371,7 +371,7 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         try:
             cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
             await document_loading(button_name=data['folder_type'], doc_info=cached_data)
-            await cache.set(f"file_sending_process", None)
+            await cache.delete('file_sending_process')
         except TypeError:
             await callback.answer(text=f"В форму {folder_type} не было загружено файлов")
 

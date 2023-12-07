@@ -50,10 +50,10 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     '''
     from main import bot
     await state.update_data(post=message.text)
-    # link = await bot.create_chat_invite_link(chat_id=-1002033917658,
-    #                                       name='Чат координаторов',
-    #                                       member_limit=1)
-    # await message.answer(f'Пройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
+    link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+                                          name='Чат координаторов',
+                                          member_limit=1)
+    await message.answer(f'Пройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
     await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
 После чего Вы сможете задать вопрос специалисту и получить доступ к каналам разделов форм''', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await db.add_registration_form(message.from_user.id, await state.get_data())

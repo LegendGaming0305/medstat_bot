@@ -10,7 +10,7 @@ import os
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
-from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition
+from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition, question_redirect
 from additional_functions import document_loading
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
@@ -54,7 +54,13 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.edit_text(text=f"Вопрос: {current_question}\nОтвет: {bot_answer}", reply_markup=User_Keyboards.back_to_fuzzy_questions().as_markup())
     elif callback_data == "back_to_fuzzy":
         keyboard, text = User_Keyboards.fuzzy_buttons_generate(information)
-        await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
+        suggestion_menu = await callback.message.edit_text(text=f"Возможно вы имели в виду:\n{text}", reply_markup=keyboard.as_markup())
+        await state.update_data(suggestion_menu=suggestion_menu)
+    elif callback_data == "not_found_question":
+        data = await state.get_data()
+        await data['suggestion_menu'].delete()
+        await callback.message.edit_text(inline_message_id=str(data["user_message"].message_id), text=f'Ваш вопрос - {data["user_question"]} - по форме {data["form_info"]["form_name"]} передан')
+        await question_redirect(callback, state)
     else:
         await callback.answer(text="Просим отправить ваш вопрос по указанной вами форме")
 
@@ -125,13 +131,25 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     Data_storage.callback_texts.append(callback.data)
 
     if callback.data == "private_message":
-        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        found_data = []
+        for row in Data_storage.callback_texts:
+            for pattern in BUTTONS_TO_NUMBER.keys():
+                if pattern in row:
+                    found_data.append(pattern)
+                    break
+        found_data = tuple(found_data)
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         message = await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
         await message_delition(message, time_sleep=10)
     elif "form_type" in callback.data:
-        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        found_data = []
+        for row in Data_storage.callback_texts:
+            for pattern in BUTTONS_TO_NUMBER.keys():
+                if pattern in row:
+                    found_data.append(pattern)
+                    break
+        found_data = tuple(found_data)
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
         query_dict, file_id = extracting_query_info(query=callback)
@@ -139,7 +157,13 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         message = await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
         await message_delition(message, time_sleep=10)
     elif callback.data == 'open_chat_public':
-        found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
+        found_data = []
+        for row in Data_storage.callback_texts:
+            for pattern in BUTTONS_TO_NUMBER.keys():
+                if pattern in row:
+                    found_data.append(pattern)
+                    break
+        found_data = tuple(found_data)
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         query_dict, file_id = extracting_query_info(query=callback)
         await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
@@ -254,8 +278,12 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         form_info = await db.extract_form_info_by_tag(tag_info=callback.data)
         await state.update_data(form_info=form_info)
         data = await state.get_data()
-        await callback.answer(text=f'Вы выбрали форму для отправки - {form_info["form_name"]}. Теперь, введите Ваш вопрос', show_alert=True)
-        await callback.message.edit_text(inline_message_id=str(data["menu"].message_id), text=f"Вы выбрали форму для отправки - {form_info['form_name']}. Для возврата в меню, воспользуйтесь кнопкой 'Возврат в главное меню'", reply_markup=User_Keyboards.section_chose().as_markup())
+        form_name_for_alert = form_info["form_name"][:40] + "..." if len(form_info["form_name"]) > 40 else form_info["form_name"]
+        await callback.answer(text=f'Вы выбрали форму для отправки - {form_name_for_alert}. Теперь, введите Ваш вопрос', show_alert=True)
+        try:
+            await callback.message.edit_text(inline_message_id=str(data["menu"].message_id), text=f"Вы выбрали форму для отправки - {form_info['form_name']}. Для возврата в меню, воспользуйтесь кнопкой 'Возврат в главное меню'", reply_markup=User_Keyboards.section_chose().as_markup())
+        except TelegramBadRequest:
+            pass
         await state.set_state(User_states.fuzzy_process)
         
 @router.callback_query(Admin_states.registration_process)

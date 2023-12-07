@@ -369,8 +369,8 @@ class Database():
         else:
             question_id = await self.connection.fetchval('''SELECT id FROM questions_forms
                                                      WHERE question_content = $1''', question)
-            return question_id
-
+            return question_id 
+        
     async def get_user_id(self, question: str) -> int:
         if self.connection is None:
             await self.create_connection()

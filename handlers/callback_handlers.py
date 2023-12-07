@@ -138,6 +138,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
                     found_data.append(pattern)
                     break
         found_data = tuple(found_data)
+        form_type = form_type[:25] + "..." if len(form_type) > 25 else form_type
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         message = await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')

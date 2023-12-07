@@ -364,8 +364,7 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
         await document_loading(button_name=data['folder_type'], doc_info=cached_data)
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
-        await state.clear()
-        await state.update_data(main_menu=menu)
+        await state.update_data(inline_menu=menu)
 
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:

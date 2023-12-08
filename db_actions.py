@@ -141,7 +141,7 @@ class Database():
         post - должность сотрудника
         organisation - организация
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         # test_subj = "Test"
@@ -157,7 +157,7 @@ class Database():
         Данные извлекаются из json-файла
         '''
 
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         check_higher_users = await self.connection.fetch('''SELECT * FROM high_priority_users''')
@@ -183,7 +183,7 @@ class Database():
         :params: 
         '''
 
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         cursor = await self.connection.fetchrow('''SELECT id, registration_date FROM registration_process WHERE user_id = ($1) ORDER BY registration_date DESC LIMIT 1''', args[0])
@@ -199,7 +199,7 @@ class Database():
         Извлечение данных о пользователях, со статусом регистрации "Pending"
         '''
         user_reg_forms = []
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
          
         users_rows = await self.connection.fetch("""SELECT registration_process_id FROM low_priority_users WHERE registration_state = 'Pending'""")
@@ -214,7 +214,7 @@ class Database():
         '''
             Извлечение всех данных о форме юзера (reg. process) или же о его данных (low_priority) по id формы или по user_id 
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         form_info = await self.connection.fetchrow('''SELECT * FROM registration_process WHERE id = ($1)''', form_id) if form_id else await self.connection.fetchrow('''SELECT * FROM registration_process WHERE user_id = ($1)''', user_id)
@@ -224,7 +224,7 @@ class Database():
     
     async def get_lp_user_info(self, lp_user_id: int = None):
         
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         form_id = await self.connection.fetchrow('''SELECT registration_process_id FROM low_priority_users WHERE id = ($1)''', lp_user_id)
@@ -235,7 +235,7 @@ class Database():
 
     async def update_registration_status(self, string_id, admin_id, reg_status) -> None:
         string_id = int(string_id)
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         inspector_id = await self.connection.fetchrow('''SELECT id FROM high_priority_users WHERE user_id = ($1)''', admin_id)
         try:
@@ -250,14 +250,14 @@ class Database():
         Получение данных пользователя по его заявке на регистрацию (reg. process) или же по его данным в low_priority таблице
         посредством user_id или form_id 
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         return await self.connection.fetchval('''SELECT registration_state FROM low_priority_users WHERE user_id = ($1)''', user_id) if user_id else await self.connection.fetchval('''SELECT registration_process_id FROM low_priority_users WHERE user_id = ($1)''', form_id)
 
     async def get_lp_user_id(self, user_id: int = None) -> str:
 
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         return await self.connection.fetchval('''SELECT id FROM low_priority_users WHERE user_id = ($1)''', user_id)
@@ -266,14 +266,14 @@ class Database():
         '''
         Ввод вопроса по форме в БД
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         form_id = await self.connection.fetchval('''SELECT id FROM form_types WHERE form_tag = $1''', form) 
         await self.connection.execute('''INSERT INTO questions_forms (lp_user_id, section_form, question_content, question_message)
                                       VALUES ($1, $2, $3, $4)''', await Database().get_lp_user_id(user_id=user_id), form_id, question, message_id)
     
     async def get_specialits_questions(self, specialist_id: int) -> list:
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message
@@ -286,7 +286,7 @@ class Database():
         return result
     
     async def answer_process_report(self, question_id: int, answer: str, specialist_id: int) -> None:
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         specialist_id = await self.connection.fetchval('''SELECT id FROM high_priority_users WHERE user_id = ($1)''', specialist_id)
@@ -299,7 +299,7 @@ class Database():
             await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id)
 
     async def check_question(self, question_id: int, message_id: int) -> str:
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         result = await self.connection.fetchval('''SELECT answer_process.answer_content 
                                                 FROM answer_process
@@ -309,7 +309,7 @@ class Database():
         return result
     
     async def get_question_form(self, lp_user_id: int):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         return await self.connection.fetchrow('''SELECT * FROM questions_forms WHERE lp_user_id = ($1)''', lp_user_id)
     
@@ -317,7 +317,7 @@ class Database():
         '''
         Получение информации для создания inline кнопок
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         if info_type == 'federal_district':
             districts = await self.connection.fetch('''SELECT federal_name, district_tag FROM federal_district''')
@@ -334,7 +334,7 @@ class Database():
             return miac
         
     async def get_user_history(self, question_id: int, values_range: list = [4, 0]):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         temp_dict = dict() ; resulted_dict = dict()
@@ -357,7 +357,7 @@ class Database():
         return resulted_dict, user_name_info, number_of_rows    
         
     async def get_question_id(self, question: str = None, inputed_question_id: int = 0, message_id: int = 0) -> int:
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         if inputed_question_id != 0:
@@ -376,7 +376,7 @@ class Database():
             return question_id
 
     async def get_user_id(self, question: str, message_id: int = 0) -> int:
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         user_id = await self.connection.fetchval('''SELECT lp_user_id FROM questions_forms
                                                      WHERE question_content = $1 AND question_message = $2''', 
@@ -384,14 +384,14 @@ class Database():
         return user_id
 
     async def get_question_message_id(self, question_id: int) -> str:
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         message_id = await self.connection.fetchval('''SELECT question_message FROM questions_forms WHERE id = $1''', question_id)
         return message_id
     
     async def get_specform(self, form_name: str = None, user_id: int = None):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         if form_name:
             form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
@@ -406,7 +406,7 @@ class Database():
             return form_info
 
     async def get_spec_info_by_user_id(self, user_id: int):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         return await self.connection.fetchrow('''SELECT hpu.*, sf.form_id FROM high_priority_users AS hpu
@@ -414,7 +414,7 @@ class Database():
                                        WHERE hpu.user_id = $1''', user_id)
     
     async def get_registrated_db(self):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
@@ -424,7 +424,7 @@ class Database():
         '''
         Добавление данных для поста публикации в открытый канал или в раздел форм
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         await self.connection.execute('''INSERT INTO publication_process (publication_content, publication_status, post_suggester)
@@ -438,7 +438,7 @@ class Database():
         '''
         Получение данных запроса на публикацию
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         result = await self.connection.fetch("""SELECT * FROM publication_process
@@ -450,7 +450,7 @@ class Database():
         '''
         Обновление статуса публикации и столбца с данным о принявшем решение
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
         await self.connection.execute("""UPDATE publication_process
@@ -462,7 +462,7 @@ class Database():
         '''
         Извлечение данных о форме по тэгу формы
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         form_info = await self.connection.fetchrow("""SELECT ft.*, sf.specialist_id  FROM form_types AS ft
@@ -474,25 +474,23 @@ class Database():
         '''
         Возврат имени субьекта
         '''
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
-        result = await self.connection.fetchval('''SELECT regions.region_name
-                                                FROM regions
-                                                JOIN miacs ON regions.miac_id = miacs.id
-                                                JOIN registration_process rp ON miacs.miac_name = rp.subject_name
-                                                WHERE rp.user_id = $1''', user_id)
+        result = await self.connection.fetchval('''SELECT subject_name
+                                                FROM registration_process
+                                                WHERE user_id = $1''', user_id)
         return result
 
     async def uploading_file(self, file_id: str, button_type: str, upload_tuple: tuple, admin_id: int = 4):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         await self.connection.execute('''INSERT INTO admin_file_uploading (file_id, file_format, button_type, admin_id) VALUES 
                                       ($1, ROW($2, $3, $4, $5), $6, $7)''', file_id, upload_tuple[0], upload_tuple[2], upload_tuple[3], upload_tuple[1], button_type, admin_id)
 
     async def loading_files(self, button_type: str):
-        if self.connection is None:
+        if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         
         files_info = await self.connection.fetch('''SELECT * FROM admin_file_uploading WHERE button_type = $1''', button_type)

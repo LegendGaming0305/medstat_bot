@@ -296,16 +296,15 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:
-    from aiogram import Bot
-    from non_script_files.config import API_TELEGRAM
+    
     '''
     Обработка запросов от inline-кнопок admin-a
     '''
     callback_data = callback.data
-
+    from main import bot
     if 'dec_app' in callback_data:
         callback_data = callback_data.split(":")
-        await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).send_message(chat_id = int(callback_data[1]), text="Ваша заявка была отклонена")
+        await bot.send_message(chat_id = int(callback_data[1]), text="Ваша заявка была отклонена")
         await db.update_registration_status(string_id=callback_data[2],
                                             admin_id=callback.from_user.id,
                                             reg_status="Decline")
@@ -314,7 +313,11 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         await state.set_state(Admin_states.registration_process)
     elif 'acc_app' in callback_data:
         callback_data = callback_data.split(":")
-        await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).send_message(chat_id = int(callback_data[1]), text="Ваша заявка была подтверждена")
+        link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+                                          name='Чат координаторов',
+                                          member_limit=1)
+        await bot.send_message(chat_id=int(callback_data[1]),
+                               text=f'Ваша заявка была подтверждена\nПройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
         await db.update_registration_status(string_id=callback_data[2],
                                             admin_id=callback.from_user.id,
                                             reg_status="Accept")
@@ -452,8 +455,6 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         file_info = await db.loading_files(button_type='medstat')
         for row in file_info:
             await bot.send_document(chat_id=chat_id, document=row["file_id"])
-        doc_1 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGKmVXPf_lixoXHDYS_7vCr9XYg7ZoAAJKOAACah64Sq9HPjDgDOFQMwQ')
     elif callback.data == 'statistic':
         file_info = await db.loading_files(button_type='statistic')
         for row in file_info:

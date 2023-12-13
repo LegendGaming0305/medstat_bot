@@ -300,9 +300,11 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         await db.update_registration_status(string_id=callback_data[2],
                                             admin_id=callback.from_user.id,
                                             reg_status="Decline")
+        data = await state.get_data()
+        page = int(data['page'])
         await callback.answer(text="Вы отклонили заявку")
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
-        await state.set_state(Admin_states.registration_process)
+        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
+                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
     elif 'acc_app' in callback_data:
         callback_data = callback_data.split(":")
         link = await bot.create_chat_invite_link(chat_id=-1002033917658,
@@ -313,9 +315,11 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         await db.update_registration_status(string_id=callback_data[2],
                                             admin_id=callback.from_user.id,
                                             reg_status="Accept")
+        data = await state.get_data()
+        page = int(data['page'])
         await callback.answer(text="Вы приняли заявку")
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
-        await state.set_state(Admin_states.registration_process)
+        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
+                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
     elif "generated" in callback_data:
         cb_data = callback.data ; cb_data = cb_data.split("&") ; cb_data = cb_data[1].split(":") ; callback_id = int(cb_data[1])
         info_tuple = await db.get_massive_of_values(form_id=callback_id)
@@ -325,10 +329,12 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
     elif callback_data == 'check_reg':
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
                                          reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered()).as_markup())
+        await state.update_data(page='1')
     elif "next_page" in callback_data or "prev_page" in callback_data:
         page_value = callback_data.split(":") ; page_value = int(page_value[1])
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
                                          reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered(passed_values=10*(page_value - 1), available_values=10)).as_markup())
+        await state.update_data(page=page_value)
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка публикации в открытом канале
@@ -509,6 +515,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(page_value=1, unreg_tuple=await db.get_unregistered()).as_markup())
         await state.set_state(Admin_states.registration_process)
+        await state.update_data(page='1')
     elif callback.data == 'publications':
         publications = await db.get_posts_to_public()
         for publication in publications:

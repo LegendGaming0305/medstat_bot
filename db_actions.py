@@ -419,7 +419,10 @@ class Database():
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
-        miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
+        miac_users = await self.connection.fetch("""SELECT registration_process.* 
+                                                 FROM registration_process
+                                                 JOIN low_priority_users lp ON registration_process.id = lp.registration_process_id
+                                                 WHERE lp.registration_state = 'Accept'""")
         return miac_users
     
     async def add_suggestion_to_post(self, post_content: str, post_suggestor: int, pub_type_tuple: tuple, pub_state: str = 'Pending') -> None:

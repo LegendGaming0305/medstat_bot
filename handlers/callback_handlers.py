@@ -288,7 +288,7 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:
-    
+    page_value = 1
     '''
     Обработка запросов от inline-кнопок admin-a
     '''
@@ -322,10 +322,11 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         form_info_list, user_info_list = info_tuple[0], info_tuple[1]
         information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nДата регистрации: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
-    elif callback.data == 'check_reg':
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
-
-@router.callback_query(Admin_states.post_publication)
+    elif callback_data == 'check_reg':
+        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered()).as_markup())
+    elif "next_page" in callback_data or "prev_page" in callback_data:
+        page_value = callback_data.split(":") ; page_value = int(page_value[1])
+        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered(passed_values=10*page_value, available_values=(10*page_value)+10)).as_markup())
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка публикации в открытом канале
@@ -504,7 +505,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         except UnboundLocalError:
             pass
     elif callback.data == 'check_reg':
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(await db.get_unregistered()).as_markup())
+        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(page_value=1, unreg_tuple=await db.get_unregistered()).as_markup())
         await state.set_state(Admin_states.registration_process)
     elif callback.data == 'publications':
         publications = await db.get_posts_to_public()

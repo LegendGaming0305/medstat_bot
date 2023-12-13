@@ -1,7 +1,6 @@
 import asyncpg
-from asyncpg.exceptions import DuplicateDatabaseError
 from asyncpg import Record
-
+from math import ceil
 
 class Database():
     def __init__(self):
@@ -194,7 +193,7 @@ class Database():
         else:
             await self.connection.execute('''INSERT INTO low_priority_users (user_id, registration_process_id) VALUES ($1, $2)''', args[0], cursor[0])
 
-    async def get_unregistered(self) -> tuple:
+    async def get_unregistered(self, passed_values: int = 0, available_values: int = 10) -> tuple:
         '''
         Извлечение данных о пользователях, со статусом регистрации "Pending"
         '''
@@ -207,8 +206,30 @@ class Database():
                                                               FROM registration_process
                                                               JOIN regions ON registration_process.subject_name = regions.region_name
                                                               WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
+        if len(user_reg_forms) >= 10:  
+                if available_values > len(user_reg_forms):
+                    available_values = user_reg_forms 
+                
+                # ] len == 60 --> 
+                # 1. p_v = 0 a_v = 10
+                # 2. p_v = 10 a_v = 20
+                # ...
+                # 5. p_v = 40 a_v = 50
+                # 6. v_p = 50 a_v = 60 
+                # p_v должен всегда быть меньше a_v на 10 единиц
+                # ] len = 34
+                # 1. p_v = 0 a_v = 10
+                # 2. p_v = 10 a_v = 20
+                # 3. p_v = 20 a_v = 30
+                # 4. p_v = 30 a_v = 40 --> Index Error (34),
+                # a_v = len или же - len // a_v, т.к. происходит то, что a_v > len, что неправильно 
+                # Возврат на предыдущую страницу работает абсолютно так же, как и представленный выше алгоритм
+                # Единственное что меняется - это page_value
+                
+            return users_rows, user_reg_forms[passed_values:available_values + 1]
+        else:
+            return users_rows, user_reg_forms
 
-        return users_rows, user_reg_forms 
     
     async def get_massive_of_values(self, form_id: int = None, user_id: int = None) -> tuple:
         '''

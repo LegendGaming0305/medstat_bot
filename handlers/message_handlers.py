@@ -28,11 +28,8 @@ async def exiting_fuzzy(message: types.Message, state: FSMContext):
             '''
             Выдаем пользователю определенный набор кнопок от его статуса
             '''
-            # await message.reply("Успешный возврат меню...", reply_markup=ReplyKeyboardRemove())
             await state.clear()
         await process_start(message, state)
-    # elif "Не нашёл подходящего вопроса" in message.text:
-    #     await question_redirect(message, state)
 
 @router.message(User_states.reg_organisation)
 async def process_fio_input(message: types.Message, state: FSMContext) -> None:
@@ -156,17 +153,26 @@ async def sending_information(message: types.Message) -> None:
     Отправка данных админу из чата координаторов
     '''
     from main import bot
+    from cache_container import cache
+    cache_data = await cache.get(f"greeting:{message.from_user.id}")
     subject = await db.get_subject_name(user_id=message.from_user.id)
-    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
-    await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
+    try:
+        forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
+        await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
+    except Exception as ex:
+        pass
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+    await bot.delete_message(chat_id=message.chat.id, message_id=str(cache_data))
 
 @router.message(F.new_chat_member & F.chat.id == -1002033917658)
 async def process_new_member(update: types.ChatMemberUpdated) -> None:
+    from cache_container import cache
     '''
     Отправка приветственного сообщения при входе пользователя в чат
     '''
     from main import bot
-    await bot.send_message(chat_id=-1002033917658,
+    greeting_message = await bot.send_message(chat_id=-1002033917658,
                            text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99"',
                            disable_notification=True)
+    serialized_greeting_message = json.dumps(greeting_message.message_id)
+    await cache.set(f"greeting:{update.from_user.id}", serialized_greeting_message)

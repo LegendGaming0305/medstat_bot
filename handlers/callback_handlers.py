@@ -5,7 +5,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile
 import json
 from aiogram.exceptions import TelegramBadRequest
-import os 
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
@@ -68,16 +67,10 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
 async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> None:
     from non_script_files.config import FORMS
     from main import bot
-    from cache_container import Data_storage
-    from keyboards import BUTTONS_TO_NUMBER
 
     if 'other' in callback.data:
         data = await state.get_data()
         file_dict, file_id = data['query_format_info'], data['file_id']
-
-        # Data_storage.callback_texts.append(callback.data)
-        # found_data = (pattern for pattern in BUTTONS_TO_NUMBER for row in Data_storage.callback_texts if pattern in row) ; found_data = tuple(found_data)
-        # await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(form_type=form_type, found_patterns=found_data))
 
         if 'form' in callback.data:
             form_id = callback.data.split(":") ; form_id = form_id[1].split("&") ; form_id = int(form_id[0])
@@ -200,7 +193,6 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
 
         history = information_tuple[0] ; history = list(history.items())
         user_full_identification = list(information_tuple[1])
-        # history_text += f'Телеграм-никнейм пользователя: {user_full_identification[1]}{NEXT_STRING}{NEXT_STRING}{NEXT_STRING}'
     
         for i in range(len(history)):
             history_text += f"""{''.join([f'{elem[0]} - {elem[1]}{NEXT_STRING}' for elem in list(history[i][1].items())])}\n\n"""

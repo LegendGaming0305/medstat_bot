@@ -205,7 +205,7 @@ class Admin_Keyboards():
             Может быть аргументом reply_markup
         '''
 
-        if page_value == 1 and len(unreg_tuple) == 10:
+        if page_value == 1 and len(unreg_tuple[1]) == 10:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
             buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
@@ -214,7 +214,7 @@ class Admin_Keyboards():
             generated_keyboard.adjust(1, repeat=True)
 
             return generated_keyboard
-        elif page_value == 1 and len(unreg_tuple) < 10:
+        elif page_value == 1 and len(unreg_tuple[1]) < 10:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
             buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
@@ -222,7 +222,7 @@ class Admin_Keyboards():
             generated_keyboard.adjust(1, repeat=True)
 
             return generated_keyboard
-        elif page_value > 1 and len(unreg_tuple) < 10:
+        elif page_value > 1 and len(unreg_tuple[1]) < 10:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
             buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]

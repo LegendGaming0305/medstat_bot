@@ -211,27 +211,8 @@ class Database():
                                                               FROM registration_process
                                                               JOIN regions ON registration_process.subject_name = regions.region_name
                                                               WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
-        if len(user_reg_forms) >= 10:  
-                if available_values > len(user_reg_forms):
-                    available_values = user_reg_forms 
-                
-                # ] len == 60 --> 
-                # 1. p_v = 0 a_v = 10
-                # 2. p_v = 10 a_v = 20
-                # ...
-                # 5. p_v = 40 a_v = 50
-                # 6. v_p = 50 a_v = 60 
-                # p_v должен всегда быть меньше a_v на 10 единиц
-                # ] len = 34
-                # 1. p_v = 0 a_v = 10
-                # 2. p_v = 10 a_v = 20
-                # 3. p_v = 20 a_v = 30
-                # 4. p_v = 30 a_v = 40 --> Index Error (34),
-                # a_v = len или же - len // a_v, т.к. происходит то, что a_v > len, что неправильно 
-                # Возврат на предыдущую страницу работает абсолютно так же, как и представленный выше алгоритм
-                # Единственное что меняется - это page_value
-                
-                return users_rows, user_reg_forms[passed_values:available_values + 1]
+        if len(user_reg_forms) >= 10:   
+            return users_rows, user_reg_forms[passed_values:passed_values + available_values]
         else:
             return users_rows, user_reg_forms
 

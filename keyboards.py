@@ -192,20 +192,50 @@ class Admin_Keyboards():
 
         return admin_registrator_keyboard
     
-    def application_gen(unreg_tuple):
+    def application_gen(unreg_tuple, page_value: int):
 
         '''
             Отдельная функция, генерирующая кнопки, в з-ти от заявок пользователей
             Может быть аргументом reply_markup
         '''
-        unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
-        generated_keyboard = InlineKeyboardBuilder()
-        buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
-        generated_keyboard.add(*[elem for elem in buttons_data])
-        generated_keyboard.adjust(3, repeat=True)
 
-        return generated_keyboard
+        if page_value == 1 and len(unreg_tuple) == 10:
+            unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
+            generated_keyboard = InlineKeyboardBuilder()
+            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            next_page = InlineKeyboardButton(text="Следующая страница", callback_data=f"next_page:{page_value + 1}")
+            generated_keyboard.add(*[elem for elem in buttons_data], next_page)
+            generated_keyboard.adjust(1, repeat=True)
+
+            return generated_keyboard
+        elif page_value == 1 and len(unreg_tuple) < 10:
+            unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
+            generated_keyboard = InlineKeyboardBuilder()
+            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            generated_keyboard.add(*[elem for elem in buttons_data])
+            generated_keyboard.adjust(1, repeat=True)
+
+            return generated_keyboard
+        elif page_value > 1 and len(unreg_tuple) < 10:
+            unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
+            generated_keyboard = InlineKeyboardBuilder()
+            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            prev_page = InlineKeyboardButton(text="Предыдущая страница", callback_data=f"prev_page:{page_value - 1}")
+            generated_keyboard.add(*[elem for elem in buttons_data], prev_page)
+            generated_keyboard.adjust(1, repeat=True)
     
+            return generated_keyboard
+        else:
+            unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
+            generated_keyboard = InlineKeyboardBuilder()
+            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            next_page = InlineKeyboardButton(text="Следующая страница", callback_data=f"next_page:{page_value + 1}")
+            prev_page = InlineKeyboardButton(text="Предыдущая страница", callback_data=f"prev_page:{page_value - 1}")
+            generated_keyboard.add(*[elem for elem in buttons_data], next_page, prev_page)
+            generated_keyboard.adjust(1, repeat=True)
+    
+            return generated_keyboard
+
     def post_publication(post_id: int, pub_type: str = 'text') -> InlineKeyboardBuilder:
         '''
         Клавиатура для выбора публикации в открытом канале

@@ -1,19 +1,23 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
-from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile
 import json
 from aiogram.exceptions import TelegramBadRequest
+import logging
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
 from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition, question_redirect
 from additional_functions import document_loading
+from logging_structure import logger_creation
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
+logger = logger_creation(module_name=__name__, save_logger=True)
+
+logger.info("Callback handler info")
 
 db = Database()
 router = Router()
@@ -327,6 +331,7 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
     elif "next_page" in callback_data or "prev_page" in callback_data:
         page_value = callback_data.split(":") ; page_value = int(page_value[1])
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered(passed_values=10*page_value, available_values=(10*page_value)+10)).as_markup())
+
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка публикации в открытом канале

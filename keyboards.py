@@ -1,8 +1,13 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 import numpy as np
+from logging_structure import logger_creation
 
 from db_actions import Database
+
+logger = logger_creation(module_name=__name__, save_logger=True)
+
+logger.info("keyboards info")
 
 db = Database()
 
@@ -10,6 +15,7 @@ back_to_menu = [[KeyboardButton(text="Возврат в главное меню"
 general_kb = ReplyKeyboardMarkup(keyboard=back_to_menu, resize_keyboard=True)
 BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2}
 NUMBER_TO_BUTTONS = {'0':'private', '1':'form', '2':'open'}
+
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
     

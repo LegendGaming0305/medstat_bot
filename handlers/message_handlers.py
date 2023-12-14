@@ -1,13 +1,17 @@
 from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect, save_to_txt, extracting_query_info, message_delition
 from states import User_states, Specialist_states, Admin_states
 from main import db
-from keyboards import User_Keyboards, Specialist_keyboards, Admin_Keyboards
+from keyboards import User_Keyboards, Specialist_keyboards
 from non_script_files.config import QUESTION_PATTERN
+from logging_structure import logger_creation
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
 import json
+
+logger = logger_creation(module_name=__name__, save_logger=True)
+logger.info("Message handler info")
 
 router = Router()
 

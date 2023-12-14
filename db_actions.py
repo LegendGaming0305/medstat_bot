@@ -1,6 +1,11 @@
 import asyncpg
 from asyncpg import Record
-from math import ceil
+import logging 
+from logging_structure import logger_creation
+
+logger = logger_creation(module_name=__name__, save_logger=True)
+
+logger.info("db actions info")
 
 class Database():
     def __init__(self):
@@ -226,11 +231,10 @@ class Database():
                 # Возврат на предыдущую страницу работает абсолютно так же, как и представленный выше алгоритм
                 # Единственное что меняется - это page_value
                 
-            return users_rows, user_reg_forms[passed_values:available_values + 1]
+                return users_rows, user_reg_forms[passed_values:available_values + 1]
         else:
             return users_rows, user_reg_forms
 
-    
     async def get_massive_of_values(self, form_id: int = None, user_id: int = None) -> tuple:
         '''
             Извлечение всех данных о форме юзера (reg. process) или же о его данных (low_priority) по id формы или по user_id 

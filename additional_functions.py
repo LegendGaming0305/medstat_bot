@@ -1,4 +1,3 @@
-from aiogram.types import InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
 from functools import wraps
@@ -9,10 +8,13 @@ from aiogram import types
 import pandas as pd
 from db_actions import Database
 from asyncio import sleep
-import os
 from aiogram.enums import ParseMode
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
+from logging_structure import logger_creation
+
+logger = logger_creation(module_name=__name__, save_logger=True)
+logger.info("additional functions info")
 
 db = Database()
 
@@ -356,8 +358,8 @@ async def document_loading(button_name: str, doc_info: dict = {}):
             await db.uploading_file(file_id=file_info.file_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
         except TelegramBadRequest:
             continue
-        
-        
+
+
 
 
         

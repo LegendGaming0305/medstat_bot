@@ -31,7 +31,7 @@ class User_Keyboards():
         medstat_button = InlineKeyboardButton(text='Медстат', callback_data='medstat')
         statistic_button = InlineKeyboardButton(text='Статистика', callback_data='statistic')
         method_recommendations_button = InlineKeyboardButton(text='Методические рекомендации', callback_data='method_recommendations')
-        registration_button = InlineKeyboardButton(text='Регистрация', callback_data='registration')
+        registration_button = InlineKeyboardButton(text='Регистрация для МИАЦ', callback_data='registration')
         make_question_button = InlineKeyboardButton(text='Задать вопрос', callback_data='make_question')
         open_chat_button = InlineKeyboardButton(text='Открытый канал', callback_data='link_open_chat', url="https://t.me/open_chat_medstat")
         razdel_chat_button = InlineKeyboardButton(text='Канал раздела форм', callback_data='link_razdel_chat')
@@ -205,39 +205,39 @@ class Admin_Keyboards():
             Может быть аргументом reply_markup
         '''
 
-        if page_value == 1 and len(unreg_tuple) == 10:
+        if page_value == 1 and len(unreg_tuple[1]) == 10:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
-            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            buttons_data_1 = [InlineKeyboardButton(text=f"Пользователь из {registration_forms[i]['region_name']}", callback_data=f"generated_button&uk:{registration_forms[i]['id']}&datetime:{registration_forms[i]['registration_date']}") for i in range(len(registration_forms))]
             next_page = InlineKeyboardButton(text="Следующая страница", callback_data=f"next_page:{page_value + 1}")
-            generated_keyboard.add(*[elem for elem in buttons_data], next_page)
+            generated_keyboard.add(*[elem for elem in buttons_data_1], next_page)
             generated_keyboard.adjust(1, repeat=True)
 
             return generated_keyboard
-        elif page_value == 1 and len(unreg_tuple) < 10:
+        elif page_value == 1 and len(unreg_tuple[1]) < 10:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
-            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
-            generated_keyboard.add(*[elem for elem in buttons_data])
+            buttons_data_2 = [InlineKeyboardButton(text=f"Пользователь из {registration_forms[i]['region_name']}", callback_data=f"generated_button&uk:{registration_forms[i]['id']}&datetime:{registration_forms[i]['registration_date']}") for i in range(len(registration_forms))]
+            generated_keyboard.add(*[elem for elem in buttons_data_2])
             generated_keyboard.adjust(1, repeat=True)
 
             return generated_keyboard
-        elif page_value > 1 and len(unreg_tuple) < 10:
+        elif page_value > 1 and len(unreg_tuple[1]) < 10:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
-            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            buttons_data_3 = [InlineKeyboardButton(text=f"Пользователь из {registration_forms[i]['region_name']}", callback_data=f"generated_button&uk:{registration_forms[i]['id']}&datetime:{registration_forms[i]['registration_date']}") for i in range(len(registration_forms))]
             prev_page = InlineKeyboardButton(text="Предыдущая страница", callback_data=f"prev_page:{page_value - 1}")
-            generated_keyboard.add(*[elem for elem in buttons_data], prev_page)
+            generated_keyboard.add(*[elem for elem in buttons_data_3], prev_page)
             generated_keyboard.adjust(1, repeat=True)
     
             return generated_keyboard
         else:
             unique_keys, registration_forms = unreg_tuple[0], unreg_tuple[1]
             generated_keyboard = InlineKeyboardBuilder()
-            buttons_data = [InlineKeyboardButton(text=f'Пользователь из {registration_forms[i][6]}', callback_data=f"generated_button&uk:{unique_keys[i][0]}&datetime:{registration_forms[i][5]}") for i in range(len(registration_forms))]
+            buttons_data_4 = [InlineKeyboardButton(text=f"Пользователь из {registration_forms[i]['region_name']}", callback_data=f"generated_button&uk:{registration_forms[i]['id']}&datetime:{registration_forms[i]['registration_date']}") for i in range(len(registration_forms))]
             next_page = InlineKeyboardButton(text="Следующая страница", callback_data=f"next_page:{page_value + 1}")
             prev_page = InlineKeyboardButton(text="Предыдущая страница", callback_data=f"prev_page:{page_value - 1}")
-            generated_keyboard.add(*[elem for elem in buttons_data], next_page, prev_page)
+            generated_keyboard.add(*[elem for elem in buttons_data_4], next_page, prev_page)
             generated_keyboard.adjust(1, repeat=True)
     
             return generated_keyboard

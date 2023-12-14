@@ -54,6 +54,7 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
 После чего Вы сможете задать вопрос специалисту и получить доступ к каналам разделов форм''', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
+    await db.update_user_info(user_id=message.from_user.id, telegram_name=message.from_user.full_name)
     await state.clear()
 
 @router.message(User_states.fuzzy_process)

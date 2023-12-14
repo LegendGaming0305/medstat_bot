@@ -1,6 +1,6 @@
 import asyncpg
 from asyncpg import Record
-import logging 
+from asyncpg.exceptions import PostgresError 
 from logging_structure import logger_creation
 
 logger = logger_creation(module_name=__name__, save_logger=True)
@@ -45,6 +45,7 @@ class Database():
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS registration_process(
                                     id SERIAL PRIMARY KEY,
                                     user_id BIGINT CHECK (user_id > 0) NOT NULL, 
+                                    telegram_name VARCHAR DEFAULT NULL,
                                     subject_name VARCHAR(100),
                                     post_name VARCHAR(100),
                                     organisation VARCHAR(400),
@@ -211,27 +212,8 @@ class Database():
                                                               FROM registration_process
                                                               JOIN regions ON registration_process.subject_name = regions.region_name
                                                               WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
-        if len(user_reg_forms) >= 10:  
-                if available_values > len(user_reg_forms):
-                    available_values = user_reg_forms 
-                
-                # ] len == 60 --> 
-                # 1. p_v = 0 a_v = 10
-                # 2. p_v = 10 a_v = 20
-                # ...
-                # 5. p_v = 40 a_v = 50
-                # 6. v_p = 50 a_v = 60 
-                # p_v должен всегда быть меньше a_v на 10 единиц
-                # ] len = 34
-                # 1. p_v = 0 a_v = 10
-                # 2. p_v = 10 a_v = 20
-                # 3. p_v = 20 a_v = 30
-                # 4. p_v = 30 a_v = 40 --> Index Error (34),
-                # a_v = len или же - len // a_v, т.к. происходит то, что a_v > len, что неправильно 
-                # Возврат на предыдущую страницу работает абсолютно так же, как и представленный выше алгоритм
-                # Единственное что меняется - это page_value
-                
-                return users_rows, user_reg_forms[passed_values:available_values + 1]
+        if len(user_reg_forms) >= 10:   
+            return users_rows, user_reg_forms[passed_values:passed_values + available_values]
         else:
             return users_rows, user_reg_forms
 
@@ -442,7 +424,10 @@ class Database():
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
-        miac_users = await self.connection.fetch('''SELECT * FROM registration_process''')
+        miac_users = await self.connection.fetch("""SELECT registration_process.* 
+                                                 FROM registration_process
+                                                 JOIN low_priority_users lp ON registration_process.id = lp.registration_process_id
+                                                 WHERE lp.registration_state = 'Accept'""")
         return miac_users
     
     async def add_suggestion_to_post(self, post_content: str, post_suggestor: int, pub_type_tuple: tuple, pub_state: str = 'Pending') -> None:
@@ -520,3 +505,12 @@ class Database():
         
         files_info = await self.connection.fetch('''SELECT * FROM admin_file_uploading WHERE button_type = $1''', button_type)
         return files_info
+    
+    async def update_user_info(self, **kwargs):
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+        
+        try:
+            await self.connection.execute('''UPDATE registration_process SET telegram_name = $1 WHERE user_id = $2''', kwargs['telegram_name'], kwargs['user_id'])
+        except PostgresError:
+            return "Failed to find the string"

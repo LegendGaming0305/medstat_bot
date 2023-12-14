@@ -6,7 +6,6 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from non_script_files.config import API_TELEGRAM
 from db_actions import Database
 from logging_structure import logger_handling, logger_creation, Stream_Handling
-import logging
 
 dp = Dispatcher(storage=MemoryStorage())
 db = Database()

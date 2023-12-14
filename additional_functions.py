@@ -83,6 +83,7 @@ def quarry_definition_decorator(func):
     async def async_wrapper(query_type, state, **kwargs):  
                 if isinstance(query_type, types.Message) == True:
                     kwargs.update({
+                        "default_query": query_type,
                         "chat_id": query_type.chat.id,
                         "user_id": query_type.from_user.id,
                         "chat_type": query_type.chat.type,
@@ -93,6 +94,7 @@ def quarry_definition_decorator(func):
                         })
                 elif isinstance(query_type, types.CallbackQuery) == True:
                     kwargs.update({
+                        "default_query": query_type.message,
                         "chat_id": query_type.message.chat.id,
                         "user_id": query_type.from_user.id,
                         "chat_type": query_type.message.chat.type,
@@ -143,6 +145,8 @@ def user_registration_decorator(func):
                 
             if prior_user == False:
                 from main import db
+                user_nickname = kwargs['default_query'].from_user.full_name
+                await db.update_user_info(user_id=kwargs['user_id'], telegram_name=user_nickname)
                 status = await db.get_status(user_id=kwargs['user_id'])
                 if status is None or status == 'Decline':
                     await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())

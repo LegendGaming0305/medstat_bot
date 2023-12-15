@@ -1,11 +1,6 @@
 import asyncpg
 from asyncpg import Record
 from asyncpg.exceptions import PostgresError 
-from logging_structure import logger_creation
-
-logger = logger_creation(module_name=__name__, save_logger=True)
-
-logger.info("db actions info")
 
 class Database():
     def __init__(self):
@@ -45,7 +40,7 @@ class Database():
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS registration_process(
                                     id SERIAL PRIMARY KEY,
                                     user_id BIGINT CHECK (user_id > 0) NOT NULL, 
-                                    telegram_name VARCHAR DEFAULT NULL,
+                                    telegram_name VARCHAR(200) DEFAULT NULL,
                                     subject_name VARCHAR(100),
                                     post_name VARCHAR(100),
                                     organisation VARCHAR(400),
@@ -283,11 +278,13 @@ class Database():
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
-        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message
+        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name
                                                 FROM questions_forms q
                                                 JOIN form_types ft ON q.section_form = ft.id
                                                 JOIN specialist_forms sf ON ft.id = sf.form_id
                                                 JOIN high_priority_users hp ON sf.specialist_id = hp.id
+                                                JOIN low_priority_users lp ON q.lp_user_id = lp.id
+                                                JOIN registration_process rp ON lp.registration_process_id = rp.id
                                                 WHERE hp.user_id = $1 AND q.question_state = 'Pending'
                                             ''', specialist_id)
         return result

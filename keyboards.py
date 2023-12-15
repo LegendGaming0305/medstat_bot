@@ -1,13 +1,10 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 import numpy as np
-from logging_structure import logger_creation
+
 
 from db_actions import Database
 
-logger = logger_creation(module_name=__name__, save_logger=True)
-
-logger.info("keyboards info")
 
 db = Database()
 

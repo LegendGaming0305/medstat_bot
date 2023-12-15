@@ -11,10 +11,7 @@ from asyncio import sleep
 from aiogram.enums import ParseMode
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
-from logging_structure import logger_creation
 
-logger = logger_creation(module_name=__name__, save_logger=True)
-logger.info("additional functions info")
 
 db = Database()
 
@@ -191,12 +188,12 @@ async def create_questions(specialist_id: int) -> tuple[dict]:
     rows = await db.get_specialits_questions(specialist_id=specialist_id)
     questions = []
     for row in rows:
-        question_info = list(row.values())
     
-        data = {'question': question_info[1],
-                'lp_user_id': question_info[2],
-                'form_name': question_info[3],
-                'message_id': question_info[4]}
+        data = {'question': row['question_content'],
+                'lp_user_id': row['lp_user_id'],
+                'form_name': row['form_name'],
+                'message_id': row['question_message'],
+                'subject_name': row['subject_name']}
         
         questions.append(data)
     return tuple(questions)     
@@ -282,8 +279,8 @@ async def creating_excel_users() -> None:
     '''
     from main import db
     df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 
-                                                              'Должность', 'Организация', 'Дата регистрации'])
-    df_output = df.loc[:, ['user_id', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
+                                                              'Должность', 'Организация', 'Дата регистрации', 'Имя в телеграмме'])
+    df_output = df.loc[:, ['user_id','Имя в телеграмме', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
     df_output.to_excel('miac_output.xlsx')
 
 def extracting_query_info(query):

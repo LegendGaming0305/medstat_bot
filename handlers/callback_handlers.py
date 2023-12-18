@@ -335,6 +335,8 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
                                          reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered(passed_values=10*(page_value - 1), available_values=10)).as_markup())
         await state.update_data(page=page_value)
+
+@router.callback_query(Admin_states.post_publication)
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка публикации в открытом канале

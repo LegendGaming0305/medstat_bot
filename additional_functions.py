@@ -351,14 +351,8 @@ async def message_delition(*args, time_sleep = 20):
                 await arg.delete()
         
 async def document_loading(button_name: str, doc_info: dict = {}):
-    from non_script_files.config import API_TELEGRAM
-
     for doc_id, file_format in doc_info.items():
-        try:
-            file_info = await Bot(API_TELEGRAM, parse_mode=ParseMode.HTML).get_file(doc_id)
-            await db.uploading_file(file_id=file_info.file_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
-        except TelegramBadRequest:
-            continue
+        await db.uploading_file(file_id=doc_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
 
 
 

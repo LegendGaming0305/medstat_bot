@@ -1,4 +1,4 @@
-from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect, save_to_txt, extracting_query_info, message_delition
+from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect, save_to_txt, extracting_query_info, message_delition, delete_member
 from states import User_states, Specialist_states, Admin_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
@@ -136,6 +136,13 @@ async def file_reciever(message: types.Message, state: FSMContext):
     file_one = await message.answer(text=f"Файл {message.document.file_name} успешно загрузился в форму {folder_type}")
     await message_delition(file_one, time_sleep=20)
 
+@router.message(Admin_states.delete_member)
+async def get_ids_to_delete(message: types.Message, state: FSMContext):
+    from keyboards import Admin_Keyboards
+    await state.update_data(ids_to_delete=message.text)
+    await message.answer(text='Выберите в каком чате удалить пользователя',
+                         reply_markup=Admin_Keyboards.delete_in_chat())
+
 @router.message(F.document)
 async def test(message: types.Message):
     print(message.document)
@@ -172,7 +179,8 @@ async def process_new_member(update: types.ChatMemberUpdated) -> None:
     Отправка приветственного сообщения при входе пользователя в чат
     '''
     from main import bot
-    greeting_message = await bot.send_message(chat_id=-1002033917658,
+    from non_script_files.config import COORD_CHAT
+    greeting_message = await bot.send_message(chat_id=COORD_CHAT,
                            text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99"',
                            disable_notification=True)
     serialized_greeting_message = json.dumps(greeting_message.message_id)

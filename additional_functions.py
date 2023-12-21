@@ -354,7 +354,16 @@ async def document_loading(button_name: str, doc_info: dict = {}):
     for doc_id, file_format in doc_info.items():
         await db.uploading_file(file_id=doc_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
 
-
+async def delete_member(message: str, chat_id: int):
+    from main import bot
+    if ',' in message:
+        ids = [int(i.strip()) for i in message.split(',')]
+        for id in ids:
+            await bot.ban_chat_member(chat_id=chat_id,
+                                      user_id=id)
+    else:
+        await bot.ban_chat_member(chat_id=chat_id,
+                                  user_id=int(message))
 
 
         

@@ -257,14 +257,30 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         message = await callback.message.edit_text(text=f'Пользователь: {user_name}\nФорма: {data["form_name"]}\n<b>Вопрос:</b> {data["question"]}:\n<s>{data["message_id"]}</s>', 
                                         reply_markup=Specialist_keyboards.question_buttons())
 
+@router.callback_query(Admin_states.delete_member)
+async def delete_chat_members(callback: types.CallbackQuery, state: FSMContext) -> None:
+    '''
+    Удаление пользователя из чата
+    '''
+    data = await state.get_data()
+    ids = data['ids_to_delete']
+    from non_script_files.config import COORD_CHAT
+    from additional_functions import delete_member
+    if callback.data == 'coord_chat':
+        await delete_member(message=ids, chat_id=COORD_CHAT)
+    await state.clear()
+    await callback.message.answer('Пользователь удален из чата', 
+                                  reply_markup=Admin_Keyboards.main_menu())
+
 @router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Обработка запросов от inline-кнопок форм
     '''
     from main import bot
+    from non_script_files.config import COORD_CHAT
     if callback.data == 'sec_ten':
-        link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+        link = await bot.create_chat_invite_link(chat_id=COORD_CHAT,
                                           name='Чат координаторов',
                                           member_limit=1)
         await callback.message.answer(text=f'Ссылка на чат координаторов {link.invite_link}')
@@ -294,6 +310,7 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
     '''
     callback_data = callback.data
     from main import bot
+    from non_script_files.config import COORD_CHAT
     if 'dec_app' in callback_data:
         callback_data = callback_data.split(":")
         await bot.send_message(chat_id = int(callback_data[1]), text="Ваша заявка была отклонена")
@@ -307,7 +324,7 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
                                          reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
     elif 'acc_app' in callback_data:
         callback_data = callback_data.split(":")
-        link = await bot.create_chat_invite_link(chat_id=-1002033917658,
+        link = await bot.create_chat_invite_link(chat_id=COORD_CHAT,
                                           name='Чат координаторов',
                                           member_limit=1)
         await bot.send_message(chat_id=int(callback_data[1]),
@@ -548,7 +565,9 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         except KeyError:
             menu = await callback.message.answer(text="Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
             await state.update_data(inline_menu=menu)
-
+    elif callback.data == 'delete_member':
+        await callback.message.edit_text(text='Введите один или несколько user_id через запятую')
+        await state.set_state(Admin_states.delete_member)
 
 
 

@@ -13,6 +13,7 @@ class Admin_states(StatesGroup):
     registration_process = State()
     post_publication = State()
     file_loading = State()
+    delete_member = State()
     
 class Specialist_states(StatesGroup):
     choosing_question = State()

@@ -167,6 +167,7 @@ class Admin_Keyboards():
         coord_chat = InlineKeyboardButton(text='Чат координаторов', callback_data='coord_chat_join', url="https://t.me/+zbz0lQoK6Fo2NjBi")
         sections = InlineKeyboardButton(text="Разделы форм", callback_data='sections_join', url="https://t.me/+cNQvBD_FWpQxZWRi")
         file_button = InlineKeyboardButton(text="Загрузить файлы", callback_data='load_file')
+        delete_member = InlineKeyboardButton(text='Удалить пользователя из чата', callback_data='delete_member')
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
@@ -174,7 +175,8 @@ class Admin_Keyboards():
                                     open_chan,
                                     coord_chat,
                                     sections,
-                                    file_button)
+                                    file_button,
+                                    delete_member)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        
@@ -276,6 +278,16 @@ class Admin_Keyboards():
             file_kb.add(cancel)
             file_kb.adjust(1)
             return file_kb.as_markup()
+        
+    def delete_in_chat() -> InlineKeyboardMarkup:
+        delete_keyboard = InlineKeyboardBuilder()
+
+        coord = InlineKeyboardButton(text='Чат координаторов', callback_data='coord_chat')
+        forms = InlineKeyboardButton(text='Раздел форм', callback_data='forms_chat')
+
+        delete_keyboard.add(coord, forms)
+        delete_keyboard.adjust(1)
+        return delete_keyboard.as_markup()
 
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 

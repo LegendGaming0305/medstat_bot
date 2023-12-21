@@ -6,3 +6,4 @@ venv
 thread.txt
 priority_list.json
 __pycache__/
+*.sql

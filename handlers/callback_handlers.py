@@ -113,7 +113,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     question_text = data['question'] ; question_text_for_user = question_text.split("\n")
     tuple_of_info = await db.get_lp_user_info(lp_user_id=data['user_id'])
     user_id = tuple_of_info[1][1]
-    form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
+    form_type = question_text_for_user[2].split(":") ; form_type = form_type[1].strip()
 
     try:
         await bot.edit_message_text(text=f'<b>Вы выбираете тип публикации для этого вопроса</b>\n{question_text}', chat_id=callback.from_user.id, message_id=data['question_message'])
@@ -199,13 +199,14 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         history_text += f"Номер страницы: {page_number + 1}"
         await callback.message.edit_text(text=history_text, reply_markup=Specialist_keyboards.question_buttons(condition=(Data_storage.question_id, information_tuple[2], 4 * page_number)))
     elif callback.data == 'answer_the_question':
+        await state.set_state(Specialist_states.choosing_question)
         questions = await create_questions(callback.from_user.id)
         await callback.message.edit_text('Выберите вопрос')
         message_ids = []
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            message = await callback.message.answer(f'Пользователь: {user_name}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+            message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',

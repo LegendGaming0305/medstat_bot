@@ -42,8 +42,8 @@ class Database():
                                     user_id BIGINT CHECK (user_id > 0) NOT NULL, 
                                     telegram_name VARCHAR(200) DEFAULT NULL,
                                     subject_name VARCHAR(100),
-                                    post_name VARCHAR(100),
-                                    organisation VARCHAR(400),
+                                    post_name TEXT,
+                                    organisation TEXT,
                                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS high_priority_users(
                                     id SERIAL PRIMARY KEY,

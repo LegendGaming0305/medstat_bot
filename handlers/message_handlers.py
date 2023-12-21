@@ -86,7 +86,7 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
     from cache_container import Data_storage
     data = await state.get_data()
     question_id = data['question_id'] ; question_text = data['question'] ; question_text_for_user = question_text.split("\n")
-    form_type = question_text_for_user[1].split(":") ; form_type = form_type[1].strip()
+    form_type = question_text_for_user[2].split(":") ; form_type = form_type[1].strip()
     await db.answer_process_report(question_id=int(question_id),
                              answer=message.text,
                              specialist_id=message.from_user.id)

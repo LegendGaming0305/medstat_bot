@@ -133,7 +133,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         found_data = tuple(found_data)
         form_type = form_type[:25] + "..." if len(form_type) > 25 else form_type
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
-        await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
+        await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         message = await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
         await message_delition(message, time_sleep=10)
     elif "form_type" in callback.data:
@@ -145,9 +145,9 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
                     break
         found_data = tuple(found_data)
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
-        await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
+        await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
         query_dict, file_id = extracting_query_info(query=callback)
-        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
+        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
         message = await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
         await message_delition(message, time_sleep=10)
     elif callback.data == 'open_chat_public':
@@ -160,7 +160,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         found_data = tuple(found_data)
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         query_dict, file_id = extracting_query_info(query=callback)
-        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[2]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
+        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
         message = await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
         await message_delition(message, time_sleep=10)
     elif callback.data == 'finish_state':
@@ -217,7 +217,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             pass
     elif callback.data == 'choose_question':
         markup = InlineKeyboardBuilder()
-        message_id = int(callback.message.text.split(':')[5][1:].strip())
+        id = callback.message.html_text.split('<s>')[1].strip()
+        message_id = int(id[:len(id) - 4])
         question_id = await db.get_question_id(question=callback.message.text.split(':')[4].strip(),
                                                message_id=message_id)
         result_check = await db.check_question(question_id=question_id, message_id=message_id)
@@ -237,7 +238,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                     question=callback.message.html_text,
                                     user_id=lp_user_id)
     elif callback.data == 'close_question':
-        message_id = int(callback.message.text.split(':')[5][1:].strip())
+        id = callback.message.html_text.split('<s>')[1].strip()
+        message_id = int(id[:len(id) - 4])
         question_id = await db.get_question_id(question=callback.message.text.split(':')[4].strip(),
                                                message_id=message_id)
         await db.answer_process_report(question_id=int(question_id),

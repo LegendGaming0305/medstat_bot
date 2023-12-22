@@ -155,7 +155,7 @@ async def channelt_id_extraction(post: types.Message):
 async def chat_id_extraction(message: types.Message):
     save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}''')
 
-@router.message(F.text.contains('8') | F.text.contains('9') | F.text.contains('+7'))
+@router.message(F.text.regexp(r'^([а-яА-ЯёЁa-zA-Z]+ [а-яА-ЯёЁa-zA-Z]+ ?[а-яА-ЯёЁa-zA-Z]+)\s(\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9})$'))
 async def sending_information(message: types.Message) -> None:
     '''
     Отправка данных админу из чата координаторов

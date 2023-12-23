@@ -4,6 +4,7 @@ from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
 from non_script_files.config import QUESTION_PATTERN
 from logging_structure import logger_creation
+from non_script_files.config import TEST_COORD_CHAT_ID
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
@@ -102,11 +103,19 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
 
 @router.message(Specialist_states.public_choose_file)
 async def information_extract(message: types.Message, state: FSMContext) -> None:
+    from cache_container import Data_storage
     data = await state.get_data()
-    query_format_info, file_id = extracting_query_info(query=message)
-    spec_forms = await db.get_specform(user_id=message.from_user.id)
-    publication_menu = await message.reply(text='Документ успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(spec_forms=spec_forms,file_type='other'))
-    await state.update_data(menu=publication_menu, query_format_info=query_format_info, file_id=file_id)
+    if message.document:
+        query_format_info, file_id = extracting_query_info(query=message)
+        spec_forms = await db.get_specform(user_id=message.from_user.id)
+        Data_storage.callback_texts.clear()
+        try:
+            publication_menu = await message.answer(text=f'Документ {query_format_info["file_name"]} успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(spec_forms=spec_forms,file_type='other'))
+            await state.update_data(menu=publication_menu, query_format_info=query_format_info, file_id=file_id)
+        except KeyError:
+            pass
+    else:
+        pass
 
 @router.message(Admin_states.file_loading)
 async def file_reciever(message: types.Message, state: FSMContext):
@@ -143,40 +152,46 @@ async def file_reciever(message: types.Message, state: FSMContext):
 async def test(message: types.Message):
     print(message.document)
 
-@router.channel_post(F.text.contains('id'))
-async def channelt_id_extraction(post: types.Message):
-    print(post)
-
 @router.message(F.text.contains('id'))
 async def chat_id_extraction(message: types.Message):
-    save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}''')
+    save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}\nchat_name={message.chat.full_name}\n\n''')
 
-@router.message(F.text.contains('8') | F.text.contains('9') | F.text.contains('+7'))
-async def sending_information(message: types.Message) -> None:
+@router.message(F.text.regexp(pattern=r"\+?[78]\s?\d{3}\s?\d{3}\s?\d{2}-?\d{2}"))
+async def sending_information(message: types.Message, state: FSMContext) -> None:
     '''
     Отправка данных админу из чата координаторов
     '''
     from main import bot
     from cache_container import cache
-    cache_data = await cache.get(f"greeting:{message.from_user.id}")
-    subject = await db.get_subject_name(user_id=message.from_user.id)
-    try:
-        forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
-        await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
-    except Exception as ex:
-        pass
-    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-    await bot.delete_message(chat_id=message.chat.id, message_id=str(cache_data))
+    data = await state.get_data()
 
-@router.message(F.new_chat_member & F.chat.id == -1002033917658)
-async def process_new_member(update: types.ChatMemberUpdated) -> None:
+    if data["user_id"] == message.from_user.id:
+        cache_data = await cache.get(f"greeting:{message.from_user.id}")
+        subject = await db.get_subject_name(user_id=message.from_user.id)
+        try:
+            forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
+            await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
+        except Exception as ex:
+            pass
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await bot.delete_message(chat_id=message.chat.id, message_id=str(cache_data))
+    else:
+        pass
+
+@router.message(F.new_chat_member & F.chat.id == TEST_COORD_CHAT_ID)
+async def process_new_member(update: types.ChatMemberUpdated, state: FSMContext) -> None:
     from cache_container import cache
+    from main import bot
     '''
     Отправка приветственного сообщения при входе пользователя в чат
     '''
-    from main import bot
-    greeting_message = await bot.send_message(chat_id=-1002033917658,
+    await state.update_data(user_name=update.from_user.full_name, user_id=update.from_user.id)
+    greeting_message = await bot.send_message(chat_id=TEST_COORD_CHAT_ID,
                            text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99"',
                            disable_notification=True)
     serialized_greeting_message = json.dumps(greeting_message.message_id)
     await cache.set(f"greeting:{update.from_user.id}", serialized_greeting_message)
+
+@router.channel_post(F.text.contains('id'))
+async def chat_id_extraction(message: types.Message):
+    save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}\nchat_name={message.chat.full_name}\n\n''')

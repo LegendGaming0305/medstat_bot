@@ -1,8 +1,11 @@
 config.py
-venv
+myvenv
 *.pdf
 *.pptx
 *.xlsx
 thread.txt
 priority_list.json
 __pycache__/
+logs
+requirements.txt
+non_script_files

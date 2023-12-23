@@ -1,3 +1,7 @@
+from os import chdir, getcwd
+chdir("C:\\Users\\user\\Desktop\\IT-Project\\Bots\\Medstat\\medstat_bot")
+root_dir = getcwd()
+
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
@@ -5,8 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from non_script_files.config import API_TELEGRAM
 from db_actions import Database
-from logging_structure import logger_handling, logger_creation, Stream_Handling
-import logging
+from logging_structure import logger_creation, Stream_Handling
 
 dp = Dispatcher(storage=MemoryStorage())
 db = Database()
@@ -22,12 +25,13 @@ async def on_shutdown():
     print('Бот выключен!')
 
 async def main() -> None:
-    from handlers import message_handlers, callback_handlers
+    from handlers import message_handlers, callback_handlers,post_handlers
     await bot.delete_webhook(drop_pending_updates=True)
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     dp.include_routers(message_handlers.router,
-                       callback_handlers.router)
+                       callback_handlers.router,
+                       post_handlers.router)
 
     logger_dict = logger_creation()
     loggers = tuple(logger_dict.values())

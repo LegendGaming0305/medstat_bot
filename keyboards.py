@@ -1,8 +1,9 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 import numpy as np
-from logging_structure import logger_creation
 
+from logging_structure import logger_creation
+from non_script_files.config import TEST_FORMS
 from db_actions import Database
 
 logger = logger_creation(module_name=__name__, save_logger=True)
@@ -14,7 +15,6 @@ db = Database()
 back_to_menu = [[KeyboardButton(text="Возврат в главное меню")]]
 general_kb = ReplyKeyboardMarkup(keyboard=back_to_menu, resize_keyboard=True)
 BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2}
-NUMBER_TO_BUTTONS = {'0':'private', '1':'form', '2':'open'}
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
@@ -354,10 +354,7 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
-    def publication_buttons(spec_forms = None, found_patterns: tuple = (), file_type: str = 'message') -> InlineKeyboardBuilder:
-        from keyboards import BUTTONS_TO_NUMBER
-        from non_script_files.config import FORMS
-
+    def publication_buttons(spec_forms = None, found_patterns: tuple = (), file_type: str = 'message', passed_forms_info = TEST_FORMS) -> InlineKeyboardBuilder:
         '''
         Данная функция принимает в себя обязательный аргумент form_type, за который закрепляется имя формы,
         а так же необязательные позиционные аргументы *args что представляют из себя 
@@ -366,13 +363,13 @@ class Specialist_keyboards():
         '''
 
         if isinstance(spec_forms, str) != True:
-            spec_forms = [form_name[1] for form_name in spec_forms]
-            spec_forms = {form_name:value for form_name in spec_forms for key, value in FORMS.items() if key == form_name}
+            spec_forms = [form_name[1] for form_name in spec_forms] if spec_forms != None else ...
+            spec_forms = {form_name:value for form_name in spec_forms for key, value in passed_forms_info.items() if key == form_name} if isinstance(passed_forms_info, dict) == True and spec_forms != None else {form_elem["form_name"]:TEST_FORMS.get(form_elem["form_name"]) for form_elem in passed_forms_info}
 
         public_kb = InlineKeyboardBuilder()
-        if found_patterns == ():
+        if len(found_patterns) == 0:
             finish_redirectiong = InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state")
-
+            
             if file_type == 'message':
                 private_chat = InlineKeyboardButton(text="В личные сообщения пользователю", callback_data="private_message")
                 section_chat = InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}") if isinstance(spec_forms, str) == True else [InlineKeyboardButton(text=f'В раздел формы {form_name}', callback_data=f'form_id:{form_id}&{file_type}') for form_name, form_id in spec_forms.items()]
@@ -394,15 +391,19 @@ class Specialist_keyboards():
                 }
             else:
                 BUTTONS_DICT = {
-                    'form': InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}&{file_type}"),
+                    'form': InlineKeyboardButton(text=f"В раздел формы {spec_forms}", callback_data=f"form_type:{spec_forms}&{file_type}") if isinstance(spec_forms, dict) != True else [InlineKeyboardButton(text=f"В раздел формы {form_name}", callback_data=f"form_type:{form_id}&{file_type}") for form_name, form_id in spec_forms.items()],
                     'open': InlineKeyboardButton(text="В открытый канал", callback_data=f"open_chat_public&{file_type}")
-                }
+                } 
 
-            keys, excluded_indices = np.array(list(BUTTONS_DICT.keys())), np.array([BUTTONS_TO_NUMBER.get(elem) for elem in found_patterns])
-            mask = np.ones(len(keys), dtype=bool)
-            mask[excluded_indices] = False
-            result = list(BUTTONS_DICT.get(elem) for elem in keys[mask])
-            public_kb.add(*result, InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
+            found_patterns = set(found_patterns)
+            keys = set(BUTTONS_DICT.keys()) 
+
+            resulted_buttons = [BUTTONS_DICT[elem] for elem in keys.difference(found_patterns)] if isinstance(BUTTONS_DICT['form'], list) == True else [BUTTONS_DICT[0][elem] for elem in keys.difference(found_patterns)]
+
+            if isinstance(resulted_buttons, list):
+                public_kb.add(*resulted_buttons[0], InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
+            else:
+                public_kb.add(*resulted_buttons, InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
             public_kb.adjust(1)
             return public_kb.as_markup()
         
@@ -417,6 +418,5 @@ class Specialist_keyboards():
         forward_keyboard.add(private, form, open_chat, end)
         forward_keyboard.adjust(1, repeat=True)
         return forward_keyboard.as_markup()
-
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

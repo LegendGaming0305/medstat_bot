@@ -1,4 +1,5 @@
 import asyncpg
+from asyncpg.exceptions import PostgresError
 from asyncpg import Record
 import logging 
 from logging_structure import logger_creation
@@ -45,9 +46,10 @@ class Database():
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS registration_process(
                                     id SERIAL PRIMARY KEY,
                                     user_id BIGINT CHECK (user_id > 0) NOT NULL, 
-                                    subject_name VARCHAR(100),
-                                    post_name VARCHAR(100),
-                                    organisation VARCHAR(400),
+                                    telegram_name VARCHAR DEFAULT NULL,
+                                    subject_name VARCHAR(300),
+                                    post_name TEXT,
+                                    organisation TEXT,
                                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         await self.connection.execute('''CREATE TABLE IF NOT EXISTS high_priority_users(
                                     id SERIAL PRIMARY KEY,
@@ -504,3 +506,14 @@ class Database():
         
         files_info = await self.connection.fetch('''SELECT * FROM admin_file_uploading WHERE button_type = $1''', button_type)
         return files_info
+    
+    async def update_user_info(self, **kwargs):
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+        
+        try:
+            await self.connection.execute('''UPDATE registration_process SET telegram_name = $1 WHERE user_id = $2''', kwargs['telegram_name'], kwargs['user_id'])
+        except PostgresError:
+            return "Failed to find the string"
+        
+

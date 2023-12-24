@@ -1,8 +1,8 @@
 import asyncpg
-from asyncpg.exceptions import PostgresError
 from asyncpg import Record
-import logging 
+from asyncpg.exceptions import PostgresError, InterfaceError 
 from logging_structure import logger_creation
+import asyncio
 
 logger = logger_creation(module_name=__name__, save_logger=True)
 
@@ -401,17 +401,22 @@ class Database():
     async def get_specform(self, form_name: str = None, user_id: int = None):
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
-        if form_name:
-            form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
-                                                INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
-                                                WHERE form_name = $1''', form_name)
-            return form_info    
-        elif user_id:
-            hpu_user_id = await self.connection.fetchval('''SELECT hpu.id FROM high_priority_users AS hpu WHERE hpu.user_id = $1''', user_id)
-            form_info = await self.connection.fetch('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+        try:
+            if form_name:
+                form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
                                                     INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
-                                                    WHERE sf.specialist_id = $1''', hpu_user_id)
-            return form_info
+                                                    WHERE form_name = $1''', form_name)
+                return form_info    
+            elif user_id:
+                hpu_user_id = await self.connection.fetchval('''SELECT hpu.id FROM high_priority_users AS hpu WHERE hpu.user_id = $1''', user_id)
+                form_info = await self.connection.fetch('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+                                                        INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
+                                                        WHERE sf.specialist_id = $1''', hpu_user_id)
+                return form_info
+        except InterfaceError:
+            asyncio.sleep(5)
+            await Database.get_specform(form_name, user_id)
+
 
     async def get_spec_info_by_user_id(self, user_id: int):
         if self.connection is None or self.connection.is_closed():

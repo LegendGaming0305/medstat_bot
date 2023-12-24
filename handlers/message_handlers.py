@@ -101,20 +101,37 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
     await state.set_state(Specialist_states.public_choose_message)
     Data_storage.callback_texts = []
 
-@router.message(Specialist_states.public_choose_file)
+@router.message(Specialist_states.complex_public) # Здесь по хорошему бы сделать 
+# через update-ы, чтобы перед тем, как срабатывала данная функция проверялся pre_process 
+# на то, какие данные скинуты. Если скинут ТОЛЬКО текст, а не прикрепленное сообщение
+# то можно выставить флаг внутри асинхронной функции, чтобы алгоритм понимал, что на подачу 
+# переданы не файлы с caption-ом, а именно текст-объявление
+# Или же можно попробовать реализовать это через фильтры
 async def information_extract(message: types.Message, state: FSMContext) -> None:
-    from cache_container import Data_storage
+    from cache_container import cache 
     data = await state.get_data()
+
     if message.document:
         query_format_info, file_id = extracting_query_info(query=message)
         spec_forms = await db.get_specform(user_id=message.from_user.id)
-        Data_storage.callback_texts.clear()
+
+        try:
+            query_format_info["caption_text"] = data["not_attached_caption"]
+            query_format_info["has_caption"] = True
+        except KeyError:
+            pass
+
         try:
             publication_menu = await message.answer(text=f'Документ {query_format_info["file_name"]} успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(spec_forms=spec_forms,file_type='other'))
-            await state.update_data(menu=publication_menu, query_format_info=query_format_info, file_id=file_id)
+            await cache.set(f"publication_menu:{publication_menu.message_id}", json.dumps([]))
+            await state.update_data(data={
+                f"publication_menu:{publication_menu.message_id}":publication_menu,
+                f"query_format_info:{publication_menu.message_id}":query_format_info,
+                f"file_id:{publication_menu.message_id}":file_id})
         except KeyError:
             pass
     else:
+        await state.update_data(not_attached_caption=message.text)
         pass
 
 @router.message(Admin_states.file_loading)

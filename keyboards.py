@@ -293,7 +293,7 @@ class Specialist_keyboards():
         main_menu_kb = InlineKeyboardBuilder()
 
         answer_the_question = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question')
-        upload_file = InlineKeyboardButton(text='Отправить файл', callback_data='upload_files')
+        upload_file = InlineKeyboardButton(text='Отправить файл\\сообщение', callback_data='complex_upload')
         main_menu_kb.add(answer_the_question, upload_file)
         main_menu_kb.adjust(1)
         return main_menu_kb.as_markup()

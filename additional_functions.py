@@ -280,9 +280,10 @@ async def creating_excel_users() -> None:
     Создание excel файла с данными по зарегистрированным пользователям
     '''
     from main import db
+    # person_data = await db.get_registrated_db()
     df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 
-                                                              'Должность', 'Организация', 'Дата регистрации'])
-    df_output = df.loc[:, ['user_id', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]
+                                                              'Должность', 'Организация', 'Дата регистрации', 'Никнейм в телеграме'])
+    df_output = df.loc[:, ['user_id', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации', 'Никнейм в телеграме']]
     df_output.to_excel('miac_output.xlsx')
 
 def extracting_query_info(query):

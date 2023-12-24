@@ -186,7 +186,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             page_number = 1 if passed_values == 4 else passed_values // 4 
             information_tuple = await db.get_user_history(question_id=Data_storage.question_id, values_range=[4, 4 * page_number])
         else:
-            message_id = int(callback.message.text.split(':')[5][1:].strip())
+            id = callback.message.html_text.split('<s>')[1].strip()
+            message_id = int(id[:len(id) - 4])
             Data_storage.question_id = await db.get_question_id(question=callback.message.text.split(':')[4].strip(),
                                                                 message_id=message_id)
             information_tuple = await db.get_user_history(question_id=Data_storage.question_id)

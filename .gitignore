@@ -7,3 +7,4 @@ thread.txt
 priority_list.json
 __pycache__/
 *.sql
+chat_information.txt

@@ -188,7 +188,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         else:
             id = callback.message.html_text.split('<s>')[1].strip()
             message_id = int(id[:len(id) - 4])
-            Data_storage.question_id = await db.get_question_id(question=callback.message.text.split(':')[4].strip(),
+            question_info = callback.message.html_text.split('</b>')
+            Data_storage.question_id = await db.get_question_id(question=question_info[1].split(':')[0].strip(),
                                                                 message_id=message_id)
             information_tuple = await db.get_user_history(question_id=Data_storage.question_id)
 
@@ -220,7 +221,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         markup = InlineKeyboardBuilder()
         id = callback.message.html_text.split('<s>')[1].strip()
         message_id = int(id[:len(id) - 4])
-        question_id = await db.get_question_id(question=callback.message.text.split(':')[4].strip(),
+        question_info = callback.message.html_text.split('</b>')
+        question_id = await db.get_question_id(question=question_info[1].split(':')[0].strip(),
                                                message_id=message_id)
         result_check = await db.check_question(question_id=question_id, message_id=message_id)
         lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[4].strip(), message_id=message_id)
@@ -241,7 +243,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
     elif callback.data == 'close_question':
         id = callback.message.html_text.split('<s>')[1].strip()
         message_id = int(id[:len(id) - 4])
-        question_id = await db.get_question_id(question=callback.message.text.split(':')[4].strip(),
+        question_info = callback.message.html_text.split('</b>')
+        question_id = await db.get_question_id(question=question_info[1].split(':')[0].strip(),
                                                message_id=message_id)
         await db.answer_process_report(question_id=int(question_id),
                                  answer='Закрытие вопроса',

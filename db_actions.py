@@ -375,7 +375,8 @@ class Database():
             return question_data
         else:
             question_id = await self.connection.fetchval('''SELECT id FROM questions_forms
-                                                     WHERE question_content = $1 AND question_message = $2''', 
+                                                     WHERE question_content ILIKE '%' || $1 || '%' 
+                                                     AND question_message = $2''', 
                                                      question, message_id)
             return question_id
 
@@ -383,7 +384,8 @@ class Database():
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
         user_id = await self.connection.fetchval('''SELECT lp_user_id FROM questions_forms
-                                                     WHERE question_content = $1 AND question_message = $2''', 
+                                                     WHERE question_content ILIKE '%' || $1 || '%' 
+                                                     AND question_message = $2''', 
                                                      question, message_id)
         return user_id
 

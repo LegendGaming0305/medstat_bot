@@ -102,9 +102,12 @@ async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> 
                                                          caption=file_dict['caption_text'])
                 case 'Photo': pass
                 case 'Video': pass
+                case 'Text': await bot.send_message(chat_id=TEST_RASDEL_FORM,
+                                                    message_thread_id=TEST_FORMS[form_type],
+                                                    text=data["not_attached_caption"])
 
             await callback.message.edit_reply_markup(inline_message_id=str(data[f'publication_menu:{menu_id}'].message_id), reply_markup=Specialist_keyboards.publication_buttons(file_type='other', passed_forms_info=passed_forms, found_patterns=found_patterns))
-            message = await callback.message.reply(f'Файл отправлен в канал формы: {form_type}')
+            message = await callback.message.reply(f'Информация отправлена в канал формы: {form_type}')
             await message_delition(message, time_sleep=10)
             await db.add_suggestion_to_post(post_content=file_id, post_suggestor=callback.from_user.id, pub_type_tuple=tuple(file_dict.values()), pub_state='Accept')
         elif 'open_chat' in callback.data:

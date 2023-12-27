@@ -9,6 +9,7 @@ from non_script_files.config import TEST_COORD_CHAT_ID
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
+import asyncio 
 import json
 
 logger = logger_creation(module_name=__name__, save_logger=True)
@@ -101,23 +102,22 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
     await state.set_state(Specialist_states.public_choose_message)
     Data_storage.callback_texts = []
 
-@router.message(Specialist_states.complex_public) # Здесь по хорошему бы сделать 
-# через update-ы, чтобы перед тем, как срабатывала данная функция проверялся pre_process 
-# на то, какие данные скинуты. Если скинут ТОЛЬКО текст, а не прикрепленное сообщение
-# то можно выставить флаг внутри асинхронной функции, чтобы алгоритм понимал, что на подачу 
-# переданы не файлы с caption-ом, а именно текст-объявление
-# Или же можно попробовать реализовать это через фильтры
+@router.message(Specialist_states.complex_public)
 async def information_extract(message: types.Message, state: FSMContext) -> None:
-    from cache_container import cache 
+    from cache_container import cache
     data = await state.get_data()
+    query_format_info, file_id = extracting_query_info(query=message)
+    spec_forms = await db.get_specform(user_id=message.from_user.id)
 
-    if message.document:
-        query_format_info, file_id = extracting_query_info(query=message)
-        spec_forms = await db.get_specform(user_id=message.from_user.id)
+    if message.document:        
+        while spec_forms == None:
+            spec_forms = await db.get_specform(user_id=message.from_user.id)
 
         try:
-            query_format_info["caption_text"] = data["not_attached_caption"]
-            query_format_info["has_caption"] = True
+            if query_format_info["has_caption"] == False and data["not_attached_caption"] != 'Null':
+                    query_format_info["caption_text"] = data["not_attached_caption"]
+                    query_format_info["has_caption"] = True
+                    state.update_data(not_attached_caption='Null')
         except KeyError:
             pass
 
@@ -132,7 +132,17 @@ async def information_extract(message: types.Message, state: FSMContext) -> None
             pass
     else:
         await state.update_data(not_attached_caption=message.text)
-        pass
+        # await asyncio.sleep(3)
+        try:
+            publication_menu = await message.answer(text=f'Текст сообщения {message.text} успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(spec_forms=spec_forms,file_type='other'))
+            await cache.set(f"publication_menu:{publication_menu.message_id}", json.dumps([]))
+            await state.update_data(data={
+                f"publication_menu:{publication_menu.message_id}":publication_menu,
+                f"query_format_info:{publication_menu.message_id}":query_format_info,
+                f"file_id:{publication_menu.message_id}":file_id})
+        except KeyError:
+            pass
+            
 
 @router.message(Admin_states.file_loading)
 async def file_reciever(message: types.Message, state: FSMContext):

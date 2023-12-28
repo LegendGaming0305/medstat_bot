@@ -97,6 +97,16 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
     await state.set_state(Specialist_states.public_choose_message)
     Data_storage.callback_texts = []
 
+@router.message(F.text.contains('/send'))
+async def process_sending_ids(message: types.message):
+    from main import bot
+    info = message.text.split(',')
+    user_id = info[0][6:]
+    subject = info[1]
+    fio = info[2]
+    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {user_id}\nСубъект: {subject}\n{fio}')
+    await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
+
 @router.message(Specialist_states.public_choose_file)
 async def information_extract(message: types.Message, state: FSMContext) -> None:
     data = await state.get_data()

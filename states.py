@@ -8,6 +8,7 @@ class User_states(StatesGroup):
     form_choosing = State()
     question_process = State()
     fuzzy_process = State()
+    file_date = State()
 
 class Admin_states(StatesGroup):
     registration_process = State()

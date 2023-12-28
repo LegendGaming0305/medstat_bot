@@ -360,6 +360,20 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
                                          reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered(passed_values=10*(page_value - 1), available_values=10)).as_markup())
         await state.update_data(page=page_value)
 
+@router.callback_query(User_states.file_date)
+async def process_getting_files(callback: types.CallbackQuery, state: FSMContext):
+    from main import bot
+    from keyboards import general_kb
+    data = await state.get_data()
+    button_type = data['button_type']
+    chat_id = callback.from_user.id
+    file_info = await db.loading_files(button_type=button_type, time=callback.data)
+    for row in file_info:
+        await bot.send_document(chat_id=chat_id, document=row["file_id"])
+    await state.clear()
+    await callback.message.answer(text='Вернитесь в главное меню по кнопке внизу вашего экрана', 
+                                  reply_markup=general_kb)
+
 @router.callback_query(Admin_states.post_publication)
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
@@ -467,39 +481,21 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     if callback.data == 'main_menu':
         await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
     elif callback.data == 'npa':
-        file_info = await db.loading_files(button_type='npa')
-        for row in file_info:
-            await bot.send_document(chat_id=chat_id, document=row["file_id"])
-        doc_1 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGK2VXPgU1Hi2v-89gziIEgLjchFaQAAJNOAACah64Sl1aSOIk1wABwTME')
-        doc_2 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGLGVXPhfXBvgGqPh1GQJJCgddAxd8AAJPOAACah64SmHR0Xxwyd3YMwQ')
-        doc_3 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGLWVXPmXLgVj-5VDpQsHk47vk2ti3AAJUOAACah64SmgjWufzx-ZPMwQ')
-        doc_4 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGLmVXPy-afxHcCQqjJLwljUV31m9DAAJbOAACah64Sn6s7HayeS3aMwQ')
+        await state.set_state(User_states.file_date)
+        await state.update_data(button_type='npa')
+        await callback.message.edit_text(text='Выберите период времени', reply_markup=User_Keyboards.show_files())
     elif callback.data == 'medstat':
-        file_info = await db.loading_files(button_type='medstat')
-        for row in file_info:
-            await bot.send_document(chat_id=chat_id, document=row["file_id"])
+        await state.set_state(User_states.file_date)
+        await state.update_data(button_type='medstat')
+        await callback.message.edit_text(text='Выберите период времени', reply_markup=User_Keyboards.show_files())
     elif callback.data == 'statistic':
-        file_info = await db.loading_files(button_type='statistic')
-        for row in file_info:
-            await bot.send_document(chat_id=chat_id, document=row["file_id"])
-        doc_1 = await bot.send_document(chat_id=chat_id,
-                                document='BQACAgIAAxkBAAIGJmVXOsMcgevHefPEnQj20Z9ACBUJAAIhOAACah64SvNHf-P94iWtMwQ')
-        doc_2 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGJ2VXO_9pbBC9S3lWkC_LeDQMxuJPAAI0OAACah64SvOhsb6UYn1GMwQ')
-        doc_3 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGKGVXPA5hnyS3pN5TKXPzuh7LybSWAAI2OAACah64ShEL9uIIerUSMwQ')
-        doc_4 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGKWVXPDWvQIvOXfpnGF4eyOAnFpjIAAI5OAACah64SsJyNl0X5tqkMwQ')
+        await state.set_state(User_states.file_date)
+        await state.update_data(button_type='statistic')
+        await callback.message.edit_text(text='Выберите период времени', reply_markup=User_Keyboards.show_files())
     elif callback.data == 'method_recommendations':
-        file_info = await db.loading_files(button_type='method_recommendations')
-        for row in file_info:
-            await bot.send_document(chat_id=chat_id, document=row["file_id"])
-        doc_1 = await bot.send_document(chat_id=chat_id, 
-                                document='BQACAgIAAxkBAAIGImVXOQABjue_Roq9Eo19YQ0Bigx2AAMYOAACah64SqPPqelSipGuMwQ')
+        await state.set_state(User_states.file_date)
+        await state.update_data(button_type='method_recommendations')
+        await callback.message.edit_text(text='Выберите период времени', reply_markup=User_Keyboards.show_files())
     elif callback.data == 'registration':
         await state.set_state(User_states.reg_organisation)
         markup = await User_Keyboards.create_district_buttons()

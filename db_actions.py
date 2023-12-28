@@ -498,11 +498,20 @@ class Database():
         await self.connection.execute('''INSERT INTO admin_file_uploading (file_id, file_format, button_type, admin_id) VALUES 
                                       ($1, ROW($2, $3, $4, $5), $6, $7)''', file_id, upload_tuple[0], upload_tuple[2], upload_tuple[3], upload_tuple[1], button_type, admin_id)
 
-    async def loading_files(self, button_type: str):
+    async def loading_files(self, button_type: str, time: str):
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
-        
-        files_info = await self.connection.fetch('''SELECT * FROM admin_file_uploading WHERE button_type = $1''', button_type)
+            
+        if time == '1 week':
+            files_info = await self.connection.fetch("""SELECT * FROM admin_file_uploading 
+                                                     WHERE button_type = $1 AND
+                                                     upload_date >= CURRENT_DATE - INTERVAL '1 week'
+                                                     ORDER BY upload_date ASC""", button_type)
+        else:
+            files_info = await self.connection.fetch("""SELECT * FROM admin_file_uploading
+                                                     WHERE button_type = $1 AND
+                                                     upload_date >= 'epoch'::timestamp
+                                                     ORDER BY upload_date ASC""", button_type)
         return files_info
     
     async def update_user_info(self, **kwargs):

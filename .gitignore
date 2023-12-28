@@ -8,3 +8,4 @@ priority_list.json
 __pycache__/
 *.sql
 chat_information.txt
+testing_code.py

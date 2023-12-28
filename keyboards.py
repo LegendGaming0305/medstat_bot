@@ -125,13 +125,21 @@ class User_Keyboards():
         back_to_pool.adjust(1, repeat=True)
         return back_to_pool
 
-    def out_of_fuzzy_questions() -> InlineKeyboardBuilder:
+    def out_of_fuzzy_questions() -> InlineKeyboardMarkup:
         
         out_of_pool = InlineKeyboardBuilder()
         not_found = InlineKeyboardButton(text="Не нашёл подходящего вопроса", callback_data="not_found_question")
         out_of_pool.add(not_found)
         out_of_pool.adjust(1)
         return out_of_pool.as_markup()
+    
+    def show_files() -> InlineKeyboardMarkup:
+        show_keyboard = InlineKeyboardBuilder()
+        week_button = InlineKeyboardButton(text='За последнюю неделю', callback_data='1 week')
+        full_button = InlineKeyboardButton(text='За все время', callback_data='full')
+        show_keyboard.add(week_button, full_button)
+        show_keyboard.adjust(1)
+        return show_keyboard.as_markup()
 
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 

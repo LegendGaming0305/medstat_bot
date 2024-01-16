@@ -222,7 +222,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         id = callback.message.html_text.split('<s>')[1].strip()
         message_id = int(id[:len(id) - 4])
         question_info = callback.message.html_text.split('</b>')
-        question_id = await db.get_question_id(question=question_info[1].split(':')[0].strip(),
+        question_id = await db.get_question_id(question=callback.message.text.split('Вопрос:')[1].split(':\n')[0].strip(),
                                                message_id=message_id)
         result_check = await db.check_question(question_id=question_id, message_id=message_id)
         lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[4].strip(), message_id=message_id)

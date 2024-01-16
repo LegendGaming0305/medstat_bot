@@ -29,7 +29,7 @@ class Database():
                                 CREATE TYPE HIGHER_PRIOR AS ENUM ('USER', 'OWNER', 'ADMIN', 'SPECIALIST');
                                 CREATE TYPE CHAT_TYPE AS ENUM ('Group', 'Section', 'Channel', 'Chat');
                                 CREATE TYPE ACCESS_LEVEL AS ENUM ('General', 'Private', 'Authorized');
-                                CREATE TYPE PUBLICATION_FORMAT AS ENUM ('Document', 'Photo', 'Text', 'Video');
+                                CREATE TYPE PUBLICATION_FORMAT AS ENUM ('Document', 'Photo', 'Text', 'Video', 'Answer');
                                 CREATE TYPE PUBLICATION_TYPE AS (
                                       publication_format PUBLICATION_FORMAT,
                                       has_caption BOOL,

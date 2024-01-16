@@ -174,6 +174,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         found_data = tuple(callback_addition())
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         query_dict, file_id = extracting_query_info(query=callback)
+        query_dict['query_format'] = 'Answer'
         await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
         message = await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
         await message_delition(message, time_sleep=10)
@@ -436,6 +437,8 @@ async def process_open_chat_publication(callback: types.CallbackQuery, state: FS
         publications = await db.get_posts_to_public()
         for publication in publications:
             if publication['publication_type']['publication_format'] == 'Text':
+                await callback.message.answer(text=publication['publication_type']['caption_text'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
+            elif publication['publication_type']['publication_format'] == 'Answer':
                 await callback.message.answer(text=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
             elif publication['publication_type']['publication_format'] == 'Document': 
                 await bot.send_document(chat_id=callback.from_user.id, caption=publication['publication_type']['caption_text'], document=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(pub_type='document', post_id=publication['id']))
@@ -569,6 +572,8 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         data = await state.get_data()
         for publication in publications:
             if publication['publication_type']['publication_format'] == 'Text':
+                await callback.message.answer(text=publication['publication_type']['caption_text'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
+            elif publication['publication_type']['publication_format'] == 'Answer':
                 await callback.message.answer(text=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
             elif publication['publication_type']['publication_format'] == 'Document': 
                 await bot.send_document(chat_id=callback.from_user.id, caption=publication['publication_type']['caption_text'], document=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(pub_type='document', post_id=publication['id']))

@@ -261,8 +261,8 @@ class Admin_Keyboards():
         '''
         publication_keyboard = InlineKeyboardBuilder()
 
-        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data=f'accept_post&pub_type:{pub_type}')
-        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data=f'decline_post&pub_type:{pub_type}')
+        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data=f'accept_post&pub_type:{pub_type}&pub_id:{post_id}')
+        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data=f'decline_post&pub_type:{pub_type}&pub_id:{post_id}')
 
         publication_keyboard.add(accept_post, decline_post)
         publication_keyboard.adjust(2)
@@ -421,10 +421,13 @@ class Specialist_keyboards():
             found_patterns = set(found_patterns)
             keys = set(BUTTONS_DICT.keys()) 
 
-            resulted_buttons = [BUTTONS_DICT[elem] for elem in keys.difference(found_patterns)] if isinstance(BUTTONS_DICT['form'], list) == True else [BUTTONS_DICT[0][elem] for elem in keys.difference(found_patterns)]
+            resulted_buttons = [BUTTONS_DICT[elem] for elem in keys.difference(found_patterns)] if isinstance(BUTTONS_DICT['form'], list) == True else [BUTTONS_DICT[elem] for elem in keys.difference(found_patterns)]
 
             if isinstance(resulted_buttons, list):
-                public_kb.add(*resulted_buttons[0], InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
+                try:
+                    public_kb.add(*resulted_buttons, InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
+                except ValueError:
+                    public_kb.add(*resulted_buttons[0], InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
             else:
                 public_kb.add(*resulted_buttons, InlineKeyboardButton(text="Завершить публикацию", callback_data="finish_state"))
             public_kb.adjust(1)

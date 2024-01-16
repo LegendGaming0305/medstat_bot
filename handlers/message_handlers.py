@@ -139,6 +139,7 @@ async def information_extract(message: types.Message, state: FSMContext) -> None
         await state.update_data(not_attached_caption=message.text)
         # await asyncio.sleep(3)
         try:
+            query_format_info['caption_text'] = message.text
             publication_menu = await message.answer(text=f'Текст сообщения {message.text} успешно загрузился и готов к отправке', reply_markup=Specialist_keyboards.publication_buttons(spec_forms=spec_forms,file_type='other'))
             await cache.set(f"publication_menu:{publication_menu.message_id}", json.dumps([]))
             await state.update_data(data={

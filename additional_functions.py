@@ -8,8 +8,6 @@ from aiogram import types
 import pandas as pd
 from db_actions import Database
 from asyncio import sleep
-from aiogram.enums import ParseMode
-from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 
 

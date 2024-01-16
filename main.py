@@ -1,7 +1,3 @@
-from os import chdir, getcwd
-chdir("C:\\Users\\user\\Desktop\\IT-Project\\Bots\\Medstat\\medstat_bot")
-root_dir = getcwd()
-
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode

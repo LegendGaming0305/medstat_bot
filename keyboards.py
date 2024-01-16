@@ -1,9 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
-import numpy as np
 
-from logging_structure import logger_creation
-from non_script_files.config import TEST_FORMS
+from non_script_files.config import FORMS
 from db_actions import Database
 
 
@@ -263,8 +261,8 @@ class Admin_Keyboards():
         '''
         publication_keyboard = InlineKeyboardBuilder()
 
-        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data=f'accept_post&pub_type:{pub_type}&pub_id:{post_id}')
-        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data=f'decline_post&pub_type:{pub_type}&pub_id:{post_id}')
+        accept_post = InlineKeyboardButton(text='Опубликовать', callback_data=f'accept_post&pub_type:{pub_type}')
+        decline_post = InlineKeyboardButton(text='Не опубликовывать', callback_data=f'decline_post&pub_type:{pub_type}')
 
         publication_keyboard.add(accept_post, decline_post)
         publication_keyboard.adjust(2)
@@ -379,7 +377,7 @@ class Specialist_keyboards():
                 question_keyboard.adjust(1)
                 return question_keyboard.as_markup()
             
-    def publication_buttons(spec_forms = None, found_patterns: tuple = (), file_type: str = 'message', passed_forms_info = TEST_FORMS) -> InlineKeyboardBuilder:
+    def publication_buttons(spec_forms = None, found_patterns: tuple = (), file_type: str = 'message', passed_forms_info = FORMS) -> InlineKeyboardBuilder:
         '''
         Данная функция принимает в себя обязательный аргумент form_type, за который закрепляется имя формы,
         а так же необязательные позиционные аргументы *args что представляют из себя 
@@ -389,7 +387,7 @@ class Specialist_keyboards():
 
         if isinstance(spec_forms, str) != True:
             spec_forms = [form_name[1] for form_name in spec_forms] if spec_forms != None else ...
-            spec_forms = {form_name:value for form_name in spec_forms for key, value in passed_forms_info.items() if key == form_name} if isinstance(passed_forms_info, dict) == True and spec_forms != None else {form_elem["form_name"]:TEST_FORMS.get(form_elem["form_name"]) for form_elem in passed_forms_info}
+            spec_forms = {form_name:value for form_name in spec_forms for key, value in passed_forms_info.items() if key == form_name} if isinstance(passed_forms_info, dict) == True and spec_forms != None else {form_elem["form_name"]:FORMS.get(form_elem["form_name"]) for form_elem in passed_forms_info}
 
         public_kb = InlineKeyboardBuilder()
         if len(found_patterns) == 0:

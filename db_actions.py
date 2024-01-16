@@ -1,13 +1,7 @@
 import asyncpg
 from asyncpg import Record
 from asyncpg.exceptions import PostgresError, InterfaceError 
-from logging_structure import logger_creation
 import asyncio
-import time 
-
-logger = logger_creation(module_name=__name__, save_logger=True)
-
-logger.info("db actions info")
 
 class Database():
     def __init__(self):

@@ -2,14 +2,11 @@ from additional_functions import user_registration_decorator, fuzzy_handler, que
 from states import User_states, Specialist_states, Admin_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
-from non_script_files.config import QUESTION_PATTERN
-from logging_structure import logger_creation
-from non_script_files.config import TEST_COORD_CHAT_ID
+from non_script_files.config import QUESTION_PATTERN, COORD_CHAT
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
-import asyncio 
 import json
 
 router = Router()
@@ -217,7 +214,7 @@ async def sending_information(message: types.Message) -> None:
     await bot.delete_message(chat_id=message.chat.id, message_id=str(cache_data))
 
 
-@router.message(F.new_chat_member & F.chat.id == TEST_COORD_CHAT_ID)
+@router.message(F.new_chat_member & F.chat.id == COORD_CHAT)
 async def process_new_member(update: types.ChatMemberUpdated, state: FSMContext) -> None:
     from cache_container import cache
     from main import bot
@@ -225,7 +222,6 @@ async def process_new_member(update: types.ChatMemberUpdated, state: FSMContext)
     Отправка приветственного сообщения при входе пользователя в чат
     '''
     from main import bot
-    from non_script_files.config import COORD_CHAT
     greeting_message = await bot.send_message(chat_id=COORD_CHAT,
                            text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99"',
                            disable_notification=True)

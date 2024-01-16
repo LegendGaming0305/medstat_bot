@@ -65,7 +65,7 @@ async def catch_questions(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(Specialist_states.complex_public)
 async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> None:
-    from non_script_files.config import TEST_FORMS, TEST_RASDEL_FORM
+    from non_script_files.config import FORMS, RASDEL_FORM
     from cache_container import cache
     from main import bot
 
@@ -79,7 +79,7 @@ async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> 
         if 'form' in callback.data:
             form_id = int(re.findall(r"\d\d?", callback.data)[0])            
 
-            for key, value in TEST_FORMS.items():
+            for key, value in FORMS.items():
                 if key in menu_cache: 
                     continue
 
@@ -93,13 +93,13 @@ async def non_message_data(callback: types.CallbackQuery, state: FSMContext) -> 
             await cache.set(f"publication_menu:{data[f'publication_menu:{menu_id}'].message_id}", json.dumps(menu_cache))
 
             match file_dict['query_format']:
-                case 'Document': await bot.send_document(chat_id=TEST_RASDEL_FORM, 
-                                                         document=file_id, message_thread_id=TEST_FORMS[form_type], 
+                case 'Document': await bot.send_document(chat_id=RASDEL_FORM, 
+                                                         document=file_id, message_thread_id=FORMS[form_type], 
                                                          caption=file_dict['caption_text'])
                 case 'Photo': pass
                 case 'Video': pass
-                case 'Text': await bot.send_message(chat_id=TEST_RASDEL_FORM,
-                                                    message_thread_id=TEST_FORMS[form_type],
+                case 'Text': await bot.send_message(chat_id=RASDEL_FORM,
+                                                    message_thread_id=FORMS[form_type],
                                                     text=data["not_attached_caption"])
 
             await callback.message.edit_reply_markup(inline_message_id=str(data[f'publication_menu:{menu_id}'].message_id), reply_markup=Specialist_keyboards.publication_buttons(file_type='other', passed_forms_info=passed_forms, found_patterns=found_patterns))
@@ -127,7 +127,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     from main import bot
     from cache_container import Data_storage
     from keyboards import BUTTONS_TO_NUMBER
-    from non_script_files.config import TEST_FORMS, TEST_RASDEL_FORM
+    from non_script_files.config import FORMS, RASDEL_FORM
 
     await state.set_state(Specialist_states.choosing_question)
     data = await state.get_data()
@@ -295,7 +295,7 @@ async def delete_chat_members(callback: types.CallbackQuery, state: FSMContext) 
 
 @router.callback_query(User_states.form_choosing)
 async def process_starting_general(callback: types.CallbackQuery, state: FSMContext) -> None:
-    from non_script_files.config import TEST_COORD_CHAT_ID
+    from non_script_files.config import COORD_CHAT
     '''
     Обработка запросов от inline-кнопок форм
     '''
@@ -336,7 +336,6 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
         
 @router.callback_query(Admin_states.registration_process)
 async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> None:
-    from non_script_files.config import TEST_COORD_CHAT_ID
     page_value = 1
     '''
     Обработка запросов от inline-кнопок admin-a
@@ -352,13 +351,9 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
                                             reg_status="Decline")
         data = await state.get_data()
         page = int(data['page'])
-        data = await state.get_data()
-        page = int(data['page'])
         await callback.answer(text="Вы отклонили заявку")
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
-                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
-                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
+                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())             
     elif 'acc_app' in callback_data:
         callback_data = callback_data.split(":")
         link = await bot.create_chat_invite_link(chat_id=COORD_CHAT,
@@ -371,13 +366,9 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
                                             reg_status="Accept")
         data = await state.get_data()
         page = int(data['page'])
-        data = await state.get_data()
-        page = int(data['page'])
         await callback.answer(text="Вы приняли заявку")
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
-                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
-                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())        
+                                         reply_markup=Admin_Keyboards.application_gen(page_value=page, unreg_tuple=await db.get_unregistered(passed_values=10*(page - 1), available_values=10)).as_markup())             
     elif "generated" in callback_data:
         cb_data = callback.data ; cb_data = cb_data.split("&") ; cb_data = cb_data[1].split(":") ; callback_id = int(cb_data[1])
         info_tuple = await db.get_massive_of_values(form_id=callback_id)
@@ -385,9 +376,6 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         information_panel = f"""Название субъекта: {form_info_list[2]},\nДолжность: {form_info_list[3]},\nМесто работы(организация): {form_info_list[4]},\nДата регистрации: {form_info_list[5]}"""
         await callback.message.edit_text(text=information_panel, reply_markup=Admin_Keyboards.reg_process_keyboard(form_info_list[1], user_info_list[0]).as_markup())
     elif callback_data == 'check_reg':
-        await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
-                                         reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered()).as_markup())
-        await state.update_data(page='1')
         await callback.message.edit_text(text="Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже", 
                                          reply_markup=Admin_Keyboards.application_gen(page_value=page_value, unreg_tuple=await db.get_unregistered()).as_markup())
         await state.update_data(page='1')
@@ -417,17 +405,17 @@ async def process_open_chat_publication(callback: types.CallbackQuery, state: FS
     Обработка публикации в открытом канале
     '''
     from main import bot
-    from non_script_files.config import TEST_OPEN_CHANNEL
+    from non_script_files.config import OPEN_CHANNEL
     if 'accept_post' in callback.data:
         pub_type = callback.data.split("&") ; pub_type = pub_type[1].split(":") ; pub_type = pub_type[1]
         pub_id = callback.data.split("&") ; pub_id = pub_id[2].split(":") ; pub_id = pub_id[1]
         
         match pub_type.capitalize():
             case 'Text': 
-                await bot.send_message(chat_id=TEST_OPEN_CHANNEL, text=callback.message.html_text)
+                await bot.send_message(chat_id=OPEN_CHANNEL, text=callback.message.html_text)
                 await callback.message.edit_text(text=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
             case 'Document': 
-                await bot.send_document(chat_id=TEST_OPEN_CHANNEL, document=callback.message.document.file_id, caption=callback.message.html_text)
+                await bot.send_document(chat_id=OPEN_CHANNEL, document=callback.message.document.file_id, caption=callback.message.html_text)
                 await callback.message.edit_caption(caption=f'<b>Вы одобрили публикацию этого поста</b>\n{callback.message.html_text}')
 
         await db.update_publication_status(pub_id=int(pub_id),

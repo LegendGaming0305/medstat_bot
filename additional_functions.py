@@ -267,17 +267,21 @@ async def question_redirect(query, state: FSMContext):
 
     await state.set_state(User_states.form_choosing)
     data = await state.get_data()
+
     try:
-        await query.reply(text=f'Ваш вопрос по форме {data["form_info"]["form_name"]} передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+        message = await query.reply(text=f'Ваш вопрос по форме {data["form_info"]["form_name"]} передан', reply_markup=User_Keyboards.back_to_main_menu().as_markup())
+        await state.update_data(notific_message=message)
     except (TelegramBadRequest, AttributeError):
-        pass
-    await state.set_state(User_states.form_choosing)
+        message = None
+
+    # await state.set_state(User_states.form_choosing)
 
 async def creating_excel_users() -> None:
     '''
     Создание excel файла с данными по зарегистрированным пользователям
     '''
     from main import db
+    # person_data = await db.get_registrated_db()
     df = pd.DataFrame(await db.get_registrated_db(), columns=['id', 'user_id', 'Наименование субъекта', 
                                                               'Должность', 'Организация', 'Дата регистрации', 'Имя в телеграмме'])
     df_output = df.loc[:, ['user_id','Имя в телеграмме', 'Наименование субъекта', 'Должность', 'Организация', 'Дата регистрации']]

@@ -1,6 +1,13 @@
 import asyncpg
 from asyncpg import Record
-from asyncpg.exceptions import PostgresError 
+from asyncpg.exceptions import PostgresError, InterfaceError 
+from logging_structure import logger_creation
+import asyncio
+import time 
+
+logger = logger_creation(module_name=__name__, save_logger=True)
+
+logger.info("db actions info")
 
 class Database():
     def __init__(self):
@@ -209,6 +216,8 @@ class Database():
                                                               WHERE registration_process.id = ($1) ORDER BY registration_date DESC LIMIT 1''', elem[0])) for elem in users_rows]
         if len(user_reg_forms) >= 10:   
             return users_rows, user_reg_forms[passed_values:passed_values + available_values]
+        if len(user_reg_forms) >= 10:   
+            return users_rows, user_reg_forms[passed_values:passed_values + available_values]
         else:
             return users_rows, user_reg_forms
 
@@ -399,17 +408,24 @@ class Database():
     async def get_specform(self, form_name: str = None, user_id: int = None):
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
-        if form_name:
-            form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
-                                                INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
-                                                WHERE form_name = $1''', form_name)
-            return form_info    
-        elif user_id:
-            hpu_user_id = await self.connection.fetchval('''SELECT hpu.id FROM high_priority_users AS hpu WHERE hpu.user_id = $1''', user_id)
-            form_info = await self.connection.fetch('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+
+        try:
+            if form_name:
+                form_info = await self.connection.fetchrow('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
                                                     INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
-                                                    WHERE sf.specialist_id = $1''', hpu_user_id)
-            return form_info
+                                                    WHERE form_name = $1''', form_name)
+                return form_info    
+            elif user_id:
+                hpu_user_id = await self.connection.fetchval('''SELECT hpu.id FROM high_priority_users AS hpu WHERE hpu.user_id = $1''', user_id)
+                form_info = await self.connection.fetch('''SELECT ft.*, sf.specialist_id FROM form_types AS ft
+                                                        INNER JOIN specialist_forms AS sf ON ft.id = sf.form_id
+                                                        WHERE sf.specialist_id = $1''', hpu_user_id)
+                return form_info
+        except InterfaceError:
+            await asyncio.sleep(3)
+            # time.sleep(2)
+            await self.get_specform(form_name, user_id)
+
 
     async def get_spec_info_by_user_id(self, user_id: int):
         if self.connection is None or self.connection.is_closed():
@@ -423,6 +439,10 @@ class Database():
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
 
+        miac_users = await self.connection.fetch("""SELECT registration_process.* 
+                                                 FROM registration_process
+                                                 JOIN low_priority_users lp ON registration_process.id = lp.registration_process_id
+                                                 WHERE lp.registration_state = 'Accept'""")
         miac_users = await self.connection.fetch("""SELECT registration_process.* 
                                                  FROM registration_process
                                                  JOIN low_priority_users lp ON registration_process.id = lp.registration_process_id

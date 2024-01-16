@@ -18,7 +18,7 @@ def logger_creation(main_logger: bool = False, module_name: str = None, save_log
     def logger_setup(module_name):
         logger = logging.getLogger(module_name)
         logger.setLevel(logging.INFO)
-        log_handler = logging.FileHandler(filename=f"logs\\{module_name}.log", mode="a", encoding="utf-8") if alternative_name == None else logging.FileHandler(filename=f"logs\\{alternative_name}.log", mode="w", encoding="utf-8")
+        log_handler = logging.FileHandler(filename=f"logs\\{module_name}.log", mode="a", encoding="utf-8") if alternative_name == None else logging.FileHandler(filename=f"logs\\{alternative_name}.log", mode="a", encoding="utf-8")
         log_formatter = logging.Formatter(r"%(asctime)s:%(name)s:%(levelname)s-%(message)s")
         log_handler.setFormatter(log_formatter)
         logger.addHandler(log_handler)

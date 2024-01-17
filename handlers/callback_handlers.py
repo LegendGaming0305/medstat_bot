@@ -143,6 +143,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
 
     question_message_id = await db.get_question_message_id(question_id=data['question_id'])
     question_text = data['question'] ; question_text_for_user = question_text.split("\n")
+    question = question_text.split(':</b>')[1].split(':\n<s>')[0].strip()
     tuple_of_info = await db.get_lp_user_info(lp_user_id=data['user_id'])
     user_id = tuple_of_info[1][1]
     form_type = question_text_for_user[2].split(":") ; form_type = form_type[1].strip()
@@ -159,13 +160,13 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     if callback.data == "private_message":
         found_data = tuple(callback_addition())
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
-        await bot.send_message(chat_id=user_id, text=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
+        await bot.send_message(chat_id=user_id, text=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         message = await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
         await message_delition(message, time_sleep=10)
     elif "form_type" in callback.data:
         found_data = tuple(callback_addition())
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
-        await bot.send_message(chat_id=-1001994572201, text=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
+        await bot.send_message(chat_id=-1001994572201, text=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
         query_dict, file_id = extracting_query_info(query=callback)
         await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
         message = await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
@@ -175,7 +176,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         query_dict, file_id = extracting_query_info(query=callback)
         query_dict['query_format'] = 'Answer'
-        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
+        await db.add_suggestion_to_post(post_content=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
         message = await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
         await message_delition(message, time_sleep=10)
     elif callback.data == 'finish_state':

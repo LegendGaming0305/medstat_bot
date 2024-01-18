@@ -488,6 +488,30 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
         await state.update_data(inline_menu=menu)
 
+@router.callback_query(Admin_states.answers_form)
+async def process_choosing_answers_form(callback: types.CallbackQuery, state: FSMContext):
+    '''
+    Обработка и выдача вопрос по определенной форме для админов
+    '''
+    from additional_functions import create_questions
+    await state.set_state(Specialist_states.choosing_question)
+    questions = await create_questions(specialist_id=callback.from_user.id, form=callback.data)
+    await callback.message.edit_text('Выберите вопрос')
+    message_ids = []
+    for question in questions:
+        lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+        user_name = lp_user_info[0][1]
+        message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+                                                reply_markup=Specialist_keyboards.question_buttons())
+        message_ids.append(message.message_id)
+    await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                reply_markup=Specialist_keyboards.questions_gen())
+    try:
+        await state.update_data(message_ids=message_ids)
+    except UnboundLocalError:
+        pass
+
+
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
@@ -547,6 +571,11 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.message.edit_text(text='Прикрепите файл и текстовое описание к нему или же вы можете написать текстовое сообщение-объявление для отправки в раздел форм')
         await state.set_state(Specialist_states.complex_public)
     elif callback.data == 'answer_the_question':
+        from additional_functions import choose_form
+        result = await choose_form(user_id=callback.from_user.id, callback=callback)
+        if result is True:
+            await state.set_state(Admin_states.answers_form)
+            return
         await state.set_state(Specialist_states.choosing_question)
         questions = await create_questions(callback.from_user.id)
         await callback.message.edit_text('Выберите вопрос')

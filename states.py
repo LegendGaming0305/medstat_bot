@@ -15,6 +15,7 @@ class Admin_states(StatesGroup):
     post_publication = State()
     file_loading = State()
     delete_member = State()
+    answers_form = State()
     
 class Specialist_states(StatesGroup):
     choosing_question = State()

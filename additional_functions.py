@@ -182,8 +182,14 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-async def create_questions(specialist_id: int) -> tuple[dict]:
-    rows = await db.get_specialits_questions(specialist_id=specialist_id)
+async def create_questions(specialist_id: int, form: str = None) -> tuple[dict]:
+    '''
+    Создание списка вопросов и помещения их в tuple
+    '''
+    if form:
+        rows = await db.get_form_questions(form_name=form)
+    else:
+        rows = await db.get_specialits_questions(specialist_id=specialist_id)
     questions = []
     for row in rows:
     
@@ -366,7 +372,16 @@ async def delete_member(message: str, chat_id: int):
     else:
         await bot.ban_chat_member(chat_id=chat_id,
                                   user_id=int(message))
-
+        
+async def choose_form(user_id: int, callback: types.CallbackQuery):
+    from non_script_files.config import PRIORITY_LIST
+    from keyboards import User_Keyboards
+    for user in PRIORITY_LIST['OWNER']:
+        if user_id in user.values():
+            await callback.message.edit_text(text='Выберите форму, по которой хотите увидеть вопросы', 
+                                             reply_markup=User_Keyboards.section_chose().as_markup())
+            return True
+    return False
 
         
 

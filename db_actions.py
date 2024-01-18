@@ -536,3 +536,19 @@ class Database():
             await self.connection.execute('''UPDATE registration_process SET telegram_name = $1 WHERE user_id = $2''', kwargs['telegram_name'], kwargs['user_id'])
         except PostgresError:
             return "Failed to find the string"
+
+    async def get_form_questions(self, form_name: str) -> Record:
+        '''
+        Возвращает список вопросов по определенной форме
+        '''
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+
+        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name
+                                                FROM questions_forms q
+                                                JOIN form_types ft ON q.section_form = ft.id
+                                                JOIN low_priority_users lp ON q.lp_user_id = lp.id
+                                                JOIN registration_process rp ON lp.registration_process_id = rp.id
+                                                WHERE ft.form_tag = $1 AND q.question_state = 'Pending'
+                                            ''', form_name)
+        return result

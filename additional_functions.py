@@ -9,7 +9,8 @@ import pandas as pd
 from db_actions import Database
 from asyncio import sleep
 from aiogram.exceptions import TelegramBadRequest
-
+import datetime
+from typing import List, Tuple
 
 db = Database()
 
@@ -32,6 +33,7 @@ def save_to_txt(file_path: str = "", print_as_finished = True, save_mode: str = 
             if print_as_finished == True:
                 print("\n")
                 print(f"The information has been added to the {file_name}.txt file.")
+        return file
 
 def access_block_decorator(func):
     '''
@@ -54,12 +56,6 @@ def access_block_decorator(func):
                     await kwargs["answer_type"].answer(text="Ваше регистрационное заявление подтверждается! Ожидайте")
                 case 'Decline':
                     await kwargs["answer_type"].answer(text="Ваша заявка отклонена и пока что у Вас нет доступа к этому разделу. Свяжитесь с администратором - @tsayushka")
-
-            # try:
-            #     if data['back_to_question_restricted'] == True:
-            #         await quarry_type.answer(text="Вы не можете завершить процесс, не отправив публикацию в один из предложенных каналов или в личный чат пользователя")
-            # except KeyError:
-            #     pass
 
         return await inner_locker(quarry_type, state)
     return async_wrapper 
@@ -123,11 +119,13 @@ def user_registration_decorator(func):
             await state.clear()
         
             async def prior_keyboard_send(key_type: InlineKeyboardBuilder, row: str):
+                from cache_container import Data_storage
                 nonlocal prior_user
                 for string_num in range(len(row)):
                     if row[string_num]["user_id"] == kwargs["user_id"]:
                         prior_user = True
                         await kwargs["answer_type"].answer('Меню', reply_markup=key_type)
+                Data_storage.user_id = kwargs["user_id"]
                     
             for level in PRIORITY_LIST.keys():
                 row = PRIORITY_LIST[level]
@@ -140,8 +138,7 @@ def user_registration_decorator(func):
                 
             if prior_user == False:
                 from main import db
-                user_nickname = kwargs['default_query'].from_user.full_name
-                await db.update_user_info(user_id=kwargs['user_id'], telegram_name=user_nickname)
+                await db.update_user_info(user_id=kwargs['user_id'], telegram_name=kwargs['default_query'].from_user.full_name)
                 status = await db.get_status(user_id=kwargs['user_id'])
                 if status is None or status == 'Decline':
                     await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())
@@ -162,18 +159,9 @@ def execution_count_decorator(func):
     """
     async_wrapper_counter = 0
     async def async_wrapper(*args, **kwargs):
-        # query_type = kwargs['callback_queue'].copy()
         nonlocal async_wrapper_counter
         async_wrapper_counter += 1
-
-        # try:
-        #     if async_wrapper_counter == 1 and kwargs['finished'] == True:
-        #         await kwargs['state'].update_data(back_to_question_restricted=True)
-        #         @access_block_decorator
-        #         def locker_raise(query_type, state):
-        #             ...
-        #         locker_raise(query_type, kwargs['state'])
-        # except KeyError: pass
+        
         return await func(*args, **kwargs)
     return async_wrapper
 
@@ -360,7 +348,7 @@ async def message_delition(*args, time_sleep = 20):
         
 async def document_loading(button_name: str, doc_info: dict = {}):
     for doc_id, file_format in doc_info.items():
-        await db.uploading_file(file_id=doc_id, button_type=button_name, upload_tuple=tuple(file_format[0].values()))
+        await db.uploading_file(file_id=doc_id, button_type=button_name, upload_tuple=tuple(file_format.values()))
 
 async def delete_member(message: str, chat_id: int):
     from main import bot
@@ -383,7 +371,39 @@ async def choose_form(user_id: int, callback: types.CallbackQuery):
             return True
     return False
 
+async def object_type_generator(obj_type, types_array: List[Tuple[str, datetime.time]] = [], time_switch = False, force_clean = False):
+    """
+    Данная функция определяет то, из чего состоит запрос польователя, когда тот отправляет несколько файлов, текст и иные данные в одним сообщением.
+    Т.е. фактически данная функция разделяет один комплексный запрос от другого посредством промежутка между запросами в 5 секунд.
+    Для того, чтобы выключить временную зависимость данной функции используется флаг time_switch.
+    Так же, для очищения локального хранилища вне зависимости от времени, используется флаг force_clean.
+    """
+    tdelta_sec = datetime.timedelta(seconds=5)
+    dt_now = datetime.datetime.now()
+    new_row = False
+    types_array.append((obj_type, dt_now))
+    
+    if time_switch == False:
+        try:
+            ltd = types_array[-2][1]
+            tdelta = dt_now - types_array[-2][1]
+            
+            if tdelta.seconds >= tdelta_sec.seconds:
+                new_row = True
+                types_array.clear()
+                types_array.append((obj_type, dt_now))
+        except IndexError:
+            pass
+            
+        yield types_array, new_row
+    else:
+        if force_clean == True:
+            types_array.clear()
+        else:
+            pass
         
+        yield types_array
+     
 
         
 

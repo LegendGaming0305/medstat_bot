@@ -5,12 +5,13 @@ from aiogram.types import FSInputFile
 import json
 from aiogram.exceptions import TelegramBadRequest
 import re
+import datetime
 
 from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
 from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition, question_redirect
-from additional_functions import document_loading
+from additional_functions import document_loading, object_type_generator, save_to_txt
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -396,7 +397,11 @@ async def process_getting_files(callback: types.CallbackQuery, state: FSMContext
     chat_id = callback.from_user.id
     file_info = await db.loading_files(button_type=button_type, time=callback.data)
     for row in file_info:
-        await bot.send_document(chat_id=chat_id, document=row["file_id"])
+        if row["file_format"]["caption_text"] == "Null":
+            await bot.send_document(chat_id=chat_id, document=row["file_id"])
+        else:
+            await bot.send_document(chat_id=chat_id, caption=row["file_format"]["caption_text"], document=row["file_id"])
+
     await state.clear()
     await callback.message.answer(text='Вернитесь в главное меню по кнопке внизу вашего экрана', 
                                   reply_markup=general_kb)
@@ -448,24 +453,50 @@ async def process_open_chat_publication(callback: types.CallbackQuery, state: FS
         
 @router.callback_query(Admin_states.file_loading)
 async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
+    from cache_container import Data_storage
+    from main import bot
     if callback.data == "npa":
         await state.update_data(folder_type="npa")
         data = await state.get_data()
-        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'. В противном случае загруженные вами файлы НЕ загрузятся в систему. Для отмены действия вернитесь в главное меню, нажав на соответствующую кнопку.", reply_markup=Admin_Keyboards.file_loading(True))
     elif callback.data == "medstat":
         await state.update_data(folder_type="medstat")
         data = await state.get_data()
-        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'. В противном случае загруженные вами файлы НЕ загрузятся в систему. Для отмены действия вернитесь в главное меню, нажав на соответствующую кнопку.", reply_markup=Admin_Keyboards.file_loading(True))
     elif callback.data == "statistic":
         await state.update_data(folder_type="statistic")
         data = await state.get_data()
-        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'. В противном случае загруженные вами файлы НЕ загрузятся в систему. Для отмены действия вернитесь в главное меню, нажав на соответствующую кнопку.", reply_markup=Admin_Keyboards.file_loading(True))
     elif callback.data == "method_recommendations":
         await state.update_data(folder_type="method_recommendations")
         data = await state.get_data()
-        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'", reply_markup=Admin_Keyboards.file_loading(True))
+        await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Прикрепите файл(ы) и при необходимости добавьте описание. Для завершения процесса отправки нажмите на кнопку 'Завершить загрузку'. В противном случае загруженные вами файлы НЕ загрузятся в систему. Для отмены действия вернитесь в главное меню, нажав на соответствующую кнопку.", reply_markup=Admin_Keyboards.file_loading(True))
+    elif callback.data == "check_loaded":
+        data = await state.get_data()
+        try:
+            files = data["file_sending_process"]
+        except KeyError:
+            await callback.answer(text="Вы ещё не загрузили файлы")
+            return None
+        loaded_text = "Ниже представлены файлы и подписи к ним, которые вы загрузили в текущей сессии.\n\n"
+        
+        for dict_instance in files.values(): 
+            string = f'{dict_instance["file_name"]}: {dict_instance["caption_text"]}\n'
+            loaded_text += "------------------------------------------------------------------------------------------\n" + string + "------------------------------------------------------------------------------------------\n\n"
+        
+        txt_report = save_to_txt(loaded_files=f"{datetime.datetime.now()}\n\n{loaded_text}", save_mode="w+")
+        txt_report = FSInputFile('loaded_files.txt')
+        
+        try:
+            await callback.message.edit_text(text=loaded_text, reply_markup=Admin_Keyboards.file_loading(True))
+        except TelegramBadRequest: 
+            try:
+                await callback.message.edit_text(text=loaded_text[:4096], reply_markup=Admin_Keyboards.file_loading(True))
+            except TelegramBadRequest:
+                pass
+            await bot.send_document(chat_id=Data_storage.user_id, document=txt_report, caption="В случае, если телеграм обрезает сообщение, высылается файл со всей информацией текущей сессии")
+        
     elif callback.data == "cancel_loading":
-        from cache_container import cache
         data = await state.get_data()
         
         match data["folder_type"]:
@@ -478,12 +509,8 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
             case 'method_recommendations':
                 folder_type = "Методические рекомендации"
         
-        try:
-            cached_data = await cache.get("file_sending_process") ; cached_data = json.loads(cached_data)
-            await document_loading(button_name=data['folder_type'], doc_info=cached_data)
-            await cache.delete('file_sending_process')
-        except TypeError:
-            await callback.answer(text=f"В форму {folder_type} не было загружено файлов")
+        files = data["file_sending_process"]
+        await document_loading(button_name=data['folder_type'], doc_info=files)
 
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
         await state.update_data(inline_menu=menu)
@@ -510,7 +537,6 @@ async def process_choosing_answers_form(callback: types.CallbackQuery, state: FS
         await state.update_data(message_ids=message_ids)
     except UnboundLocalError:
         pass
-
 
 @router.callback_query()
 async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None:

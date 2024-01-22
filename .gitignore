@@ -1,5 +1,6 @@
 config.py
 venv
+myvenv
 *.pdf
 *.pptx
 *.xlsx
@@ -9,3 +10,7 @@ __pycache__/
 *.sql
 chat_information.txt
 testing_code.py
+non_script_files
+logs
+loaded_files.txt
+miac_output

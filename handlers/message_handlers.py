@@ -1,13 +1,17 @@
-from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect, save_to_txt, extracting_query_info, message_delition, delete_member
+from additional_functions import user_registration_decorator, fuzzy_handler, question_redirect, save_to_txt, extracting_query_info, message_delition
+from additional_functions import delete_member, object_type_generator
 from states import User_states, Specialist_states, Admin_states
 from main import db
 from keyboards import User_Keyboards, Specialist_keyboards
-from non_script_files.config import QUESTION_PATTERN, COORD_CHAT
+from non_script_files.config import QUESTION_PATTERN, TEST_COORD_CHAT_ID
 
 from aiogram.fsm.context import FSMContext
 from aiogram import Router, F, types
 from aiogram.filters import Command
 import json
+import datetime
+import asyncio
+import copy
 
 router = Router()
 
@@ -148,13 +152,12 @@ async def information_extract(message: types.Message, state: FSMContext) -> None
                 f"file_id:{publication_menu.message_id}":file_id})
         except KeyError:
             pass
-            
 
 @router.message(Admin_states.file_loading)
-async def file_reciever(message: types.Message, state: FSMContext):
-    from cache_container import cache
+async def file_reciever(message: types.Message, state: FSMContext):  
+    from cache_container import Data_storage 
+                   
     data = await state.get_data()
-    
     match data["folder_type"]:
         case 'npa':
             folder_type = "НПА"
@@ -164,19 +167,54 @@ async def file_reciever(message: types.Message, state: FSMContext):
             folder_type = "Статистика"
         case 'method_recommendations':
             folder_type = "Методические рекомендации"
-
-    file_id = message.document.file_id
-    file_format = extracting_query_info(message)
-    cache_data = await cache.get("file_sending_process")   
-
-    if cache_data:
-        cache_data = json.loads(cache_data)
-        cache_data.update([(file_id, file_format)])
-        serialized_file_info = json.dumps(cache_data)
+            
+    file_format = extracting_query_info(message) 
+    
+    try:
+        file_id = message.document.file_id
+    except AttributeError:
+        pass
+    
+    try:
+        if data["file_sending_process"]:
+            pass
+    except KeyError:
+        await state.update_data(file_sending_process={})
+    
+    if message.media_group_id == None and file_format[0]["query_format"] != "Text":
+        data = await state.get_data()
+        data['file_sending_process'].update([(file_id, file_format[0])])
+        Data_storage.not_attached_caption = [None, 0]
+    elif message.media_group_id == None and file_format[0]["query_format"] == "Text":
+        Data_storage.not_attached_caption = [message.text, message.message_id]
+        await message.delete()
+        return None
     else:
-        serialized_file_info = json.dumps({file_id:file_format})
-
-    await cache.set(f"file_sending_process", serialized_file_info)
+        data = await state.get_data()
+        try:
+            if data["current_media_group"][0] == message.media_group_id:
+                file_format[0]["caption_text"] = data["current_media_group"][1][0] if Data_storage.not_attached_caption[0] != None else "Null"
+                file_format[0]["has_caption"] = True if Data_storage.not_attached_caption[0] != None else False
+            else:
+                try:
+                    if Data_storage.not_attached_caption[1] == data["current_media_group"][1][1]:
+                        Data_storage.not_attached_caption = [None, 0] 
+                    else:
+                        pass
+                except AttributeError:
+                    pass
+                if  Data_storage.not_attached_caption[0] != None:
+                    file_format[0]["caption_text"] = Data_storage.not_attached_caption[0]
+                    file_format[0]["has_caption"] = True
+                await state.update_data(current_media_group=(message.media_group_id, Data_storage.not_attached_caption))
+        except KeyError:
+            if  Data_storage.not_attached_caption[0] != None:
+                file_format[0]["caption_text"] = Data_storage.not_attached_caption[0]
+                file_format[0]["has_caption"] = True
+            await state.update_data(current_media_group=(message.media_group_id, Data_storage.not_attached_caption))
+        
+        data['file_sending_process'].update([(file_id, file_format[0])])
+        
     await message.delete()
     file_one = await message.answer(text=f"Файл {message.document.file_name} успешно загрузился в форму {folder_type}")
     await message_delition(file_one, time_sleep=20)
@@ -214,8 +252,7 @@ async def sending_information(message: types.Message) -> None:
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     await bot.delete_message(chat_id=message.chat.id, message_id=str(cache_data))
 
-
-@router.message(F.new_chat_member & F.chat.id == COORD_CHAT)
+@router.message(F.new_chat_member & F.chat.id == TEST_COORD_CHAT_ID)
 async def process_new_member(update: types.ChatMemberUpdated, state: FSMContext) -> None:
     from cache_container import cache
     from main import bot
@@ -223,7 +260,7 @@ async def process_new_member(update: types.ChatMemberUpdated, state: FSMContext)
     Отправка приветственного сообщения при входе пользователя в чат
     '''
     from main import bot
-    greeting_message = await bot.send_message(chat_id=COORD_CHAT,
+    greeting_message = await bot.send_message(chat_id=TEST_COORD_CHAT_ID,
                            text=f'Добрый день, {update.from_user.full_name}! В целях качественного и оперативного взаимодействия в рамках годового отчета перед началом работы укажите, пожалуйста, Ваши <b>ФИО</b> и <b>номер телефона</b> в сообщении данного чата.\nПример:\n"Иванов Иван Иванович 8 999 999 99-99"',
                            disable_notification=True)
     serialized_greeting_message = json.dumps(greeting_message.message_id)

@@ -167,7 +167,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     elif "form_type" in callback.data:
         found_data = tuple(callback_addition())
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
-        await bot.send_message(chat_id=-1001994572201, text=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
+        await bot.send_message(chat_id=-1001994572201, text=f'<b>Вопрос</b>:{question}\n\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
         query_dict, file_id = extracting_query_info(query=callback)
         await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
         message = await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
@@ -177,7 +177,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         query_dict, file_id = extracting_query_info(query=callback)
         query_dict['query_format'] = 'Answer'
-        await db.add_suggestion_to_post(post_content=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
+        await db.add_suggestion_to_post(post_content=f'<b>Вопрос</b>:{question}\n\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()))
         message = await callback.message.answer('Запрос на публикацию в открытом канале отправлен')
         await message_delition(message, time_sleep=10)
     elif callback.data == 'finish_state':

@@ -309,10 +309,10 @@ async def process_starting_general(callback: types.CallbackQuery, state: FSMCont
                                           name='Чат координаторов',
                                           member_limit=1)
         await callback.message.answer(text=f'Ссылка на чат координаторов {link.invite_link}')
-        await callback.message.edit_text(text='Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+        await callback.message.edit_text(text='Меню', reply_markup=await User_Keyboards.main_menu(True, user_id=callback.from_user.id))
         await state.clear()
     elif callback.data == 'main_menu':
-        await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+        await callback.message.edit_text('Меню', reply_markup=await User_Keyboards.main_menu(True, user_id=callback.from_user.id))
         await state.clear()
     else:
         await state.update_data(tag=callback.data)
@@ -558,7 +558,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     from main import bot
 
     if callback.data == 'main_menu':
-        await callback.message.edit_text('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+        await callback.message.edit_text('Меню', reply_markup=await User_Keyboards.main_menu(True, user_id=callback.from_user.id))
     elif callback.data == 'npa':
         await state.set_state(User_states.file_date)
         await state.update_data(button_type='npa')

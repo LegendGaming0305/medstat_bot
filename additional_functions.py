@@ -141,9 +141,9 @@ def user_registration_decorator(func):
                 await db.update_user_info(user_id=kwargs['user_id'], telegram_name=kwargs['default_query'].from_user.full_name)
                 status = await db.get_status(user_id=kwargs['user_id'])
                 if status is None or status == 'Decline':
-                    await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())
+                    await kwargs['answer_type'].answer('Меню', reply_markup=await User_Keyboards.main_menu(False))
                 elif status in ('Accept', 'Pending'):
-                    await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+                    await kwargs['answer_type'].answer('Меню', reply_markup=await User_Keyboards.main_menu(True, kwargs['user_id']))
 
             return await func(query_type, state)
         return await registration(query_type, state)

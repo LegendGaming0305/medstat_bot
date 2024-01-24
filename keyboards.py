@@ -14,14 +14,13 @@ BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2}
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
     
-    def main_menu(filled_form = False) -> InlineKeyboardBuilder:
+    async def main_menu(filled_form = False, user_id: int = None) -> InlineKeyboardBuilder:
 
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
             Может быть аргументом reply_markup
         '''
         user_starting_keyboard = InlineKeyboardBuilder()
-
         npa_button = InlineKeyboardButton(text='НПА', callback_data='npa')
         medstat_button = InlineKeyboardButton(text='Медстат', callback_data='medstat')
         statistic_button = InlineKeyboardButton(text='Статистика', callback_data='statistic')
@@ -30,6 +29,9 @@ class User_Keyboards():
         make_question_button = InlineKeyboardButton(text='Задать вопрос', callback_data='make_question')
         open_chat_button = InlineKeyboardButton(text='Открытый канал', callback_data='link_open_chat', url=OPEN_CHANNEL_URL)
         razdel_chat_button = InlineKeyboardButton(text='Канал раздела форм', callback_data='link_razdel_chat')
+        link = await db.get_link(user_id=user_id)
+        if link:
+            sogl_chat_button = InlineKeyboardButton(text='Канал согласования форм', callback_data='link_sogl_chat', url=link[0]['link'])
         
         if filled_form == False:
             user_starting_keyboard.add(npa_button, 
@@ -45,9 +47,10 @@ class User_Keyboards():
                         method_recommendations_button,
                         open_chat_button,
                         make_question_button,
-                        razdel_chat_button)
+                        razdel_chat_button,
+                        sogl_chat_button)
         
-        return user_starting_keyboard.adjust(1, repeat=True)
+        return user_starting_keyboard.adjust(1, repeat=True).as_markup()
     
     def back_to_main_menu() -> InlineKeyboardBuilder:
         main_menu_back = InlineKeyboardBuilder()

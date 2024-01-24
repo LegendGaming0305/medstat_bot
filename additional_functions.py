@@ -10,7 +10,7 @@ from db_actions import Database
 from asyncio import sleep
 from aiogram.exceptions import TelegramBadRequest
 import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 db = Database()
 
@@ -170,18 +170,25 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-async def create_questions(specialist_id: int, form: str = None) -> tuple[dict]:
+async def create_questions(specialist_id: int, form: str = None, question_status: str = "Pending") -> tuple[dict]:
     '''
     Создание списка вопросов и помещения их в tuple
     '''
     if form:
-        rows = await db.get_form_questions(form_name=form)
+        rows = await db.get_form_questions(form_name=form, question_status=question_status)
     else:
-        rows = await db.get_specialits_questions(specialist_id=specialist_id)
+        rows = await db.get_specialits_questions(specialist_id=specialist_id, question_status=question_status)
     questions = []
     for row in rows:
-    
-        data = {'question': row['question_content'],
+        try:
+            data = {'question': row['question_content'],
+                'lp_user_id': row['lp_user_id'],
+                'form_name': row['form_name'],
+                'message_id': row['question_message'],
+                'subject_name': row['subject_name'],
+                'spec_answer': row['answer_content']}
+        except KeyError:
+            data = {'question': row['question_content'],
                 'lp_user_id': row['lp_user_id'],
                 'form_name': row['form_name'],
                 'message_id': row['question_message'],
@@ -361,13 +368,15 @@ async def delete_member(message: str, chat_id: int):
         await bot.ban_chat_member(chat_id=chat_id,
                                   user_id=int(message))
         
-async def choose_form(user_id: int, callback: types.CallbackQuery):
+async def choose_form(user_id: int, callback: types.CallbackQuery, user_type: str = "User", question_status: str = "Pending"):
     from non_script_files.config import PRIORITY_LIST
     from keyboards import User_Keyboards
+    form_data = await db.get_form_questions(question_status=question_status, ignore_forms=True)
+    form_tags = tuple({elem["form_tag"] for elem in form_data})
     for user in PRIORITY_LIST['OWNER']:
         if user_id in user.values():
             await callback.message.edit_text(text='Выберите форму, по которой хотите увидеть вопросы', 
-                                             reply_markup=User_Keyboards.section_chose().as_markup())
+                                             reply_markup=User_Keyboards.section_chose(user_type=user_type, tag_tuple=form_tags).as_markup())
             return True
     return False
 

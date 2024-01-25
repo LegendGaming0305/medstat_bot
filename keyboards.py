@@ -31,7 +31,7 @@ class User_Keyboards():
         razdel_chat_button = InlineKeyboardButton(text='Канал раздела форм', callback_data='link_razdel_chat')
         link = await db.get_link(user_id=user_id)
         if link:
-            sogl_chat_button = InlineKeyboardButton(text='Канал согласования форм', callback_data='link_sogl_chat', url=link[0]['link'])
+            sogl_chat_button = InlineKeyboardButton(text='Уведомления MedstatWEB', callback_data='link_sogl_chat', url=link[0]['link'])
         
         if filled_form == False:
             user_starting_keyboard.add(npa_button, 

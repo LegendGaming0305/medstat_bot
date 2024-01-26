@@ -41,14 +41,23 @@ class User_Keyboards():
                         open_chat_button, 
                         registration_button)
         else:
-            user_starting_keyboard.add(npa_button, 
-                        medstat_button, 
-                        statistic_button,
-                        method_recommendations_button,
-                        open_chat_button,
-                        make_question_button,
-                        razdel_chat_button,
-                        sogl_chat_button)
+            try:
+                user_starting_keyboard.add(npa_button, 
+                            medstat_button, 
+                            statistic_button,
+                            method_recommendations_button,
+                            open_chat_button,
+                            make_question_button,
+                            razdel_chat_button,
+                            sogl_chat_button)
+            except UnboundLocalError:
+                user_starting_keyboard.add(npa_button, 
+                            medstat_button, 
+                            statistic_button,
+                            method_recommendations_button,
+                            open_chat_button,
+                            make_question_button,
+                            razdel_chat_button)
         
         return user_starting_keyboard.adjust(1, repeat=True).as_markup()
     

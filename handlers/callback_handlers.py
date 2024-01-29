@@ -511,7 +511,9 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         
         files = data["file_sending_process"]
         await document_loading(button_name=data['folder_type'], doc_info=files)
-
+        from non_script_files.config import OPEN_CHANNEL
+        files_names = '\n- '.join(set(file['file_name'] for file in files.values()))
+        await bot.send_message(chat_id=OPEN_CHANNEL, text=f'В раздел файлов <b>{folder_type}</b> загружен/ы файл/ы:\n- {files_names}')
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
         await state.update_data(inline_menu=menu)
 

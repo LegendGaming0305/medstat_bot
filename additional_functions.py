@@ -1,7 +1,7 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
 from functools import wraps
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardButton
 from fuzzywuzzy import fuzz
 from aiogram.fsm.context import FSMContext
 from aiogram import types
@@ -404,7 +404,14 @@ async def object_type_generator(obj_type, types_array: List[Tuple[str, datetime.
         
         yield types_array
      
-
+async def account_link(url: str):
+    '''
+    Создание кнопки с ссылкой на аккаунт
+    '''
+    markup = InlineKeyboardBuilder()
+    link = InlineKeyboardButton(text='Аккаунт', url=url)
+    markup.add(link)
+    return markup.as_markup()
         
 
 

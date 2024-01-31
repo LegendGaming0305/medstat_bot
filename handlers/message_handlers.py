@@ -241,11 +241,13 @@ async def sending_information(message: types.Message) -> None:
     '''
     from main import bot
     from cache_container import cache
+    from additional_functions import account_link
 
     cache_data = await cache.get(f"greeting:{message.from_user.id}")
     subject = await db.get_subject_name(user_id=message.from_user.id)
     try:
-        forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
+        forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}',
+                                         reply_markup=await account_link(message.from_user.url))
         await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
     except Exception as ex:
         pass

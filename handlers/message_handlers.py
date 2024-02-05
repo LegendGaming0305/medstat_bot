@@ -104,11 +104,13 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
 @router.message(F.text.contains('/send'))
 async def process_sending_ids(message: types.message):
     from main import bot
+    from additional_functions import account_link
     info = message.text.split(',')
     user_id = info[0][6:]
     subject = info[1]
     fio = info[2]
-    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {user_id}\nСубъект: {subject}\n{fio}')
+    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {user_id}\nСубъект: {subject}\n{fio}',
+                                     reply_markup=await account_link(url=f'tg://user?id={user_id}'))
     await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
 
 @router.message(Specialist_states.complex_public)
@@ -234,7 +236,7 @@ async def test(message: types.Message):
 async def chat_id_extraction(message: types.Message):
     save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}\nchat_name={message.chat.full_name}\n\n''')
 
-@router.message(F.text.regexp(r'^[\s]*([а-яА-ЯёЁ]+\s[а-яА-ЯёЁ]+\s?[а-яА-ЯёЁ]+)[\s|,]*\+?\d+([\(\s\-]?\d+[\)\s\-]?[\d\s\-]+)?$'))
+@router.message(F.text.regexp(r'^[\s]*([а-яА-ЯёЁ]+\s[а-яА-ЯёЁ]+\s?[а-яА-ЯёЁ]+)[\s|,]*\+?\d+\s?([\(\s\-]?\d+[\)\s\-]?[\d\s\-]+)?$'))
 async def sending_information(message: types.Message) -> None:
     '''
     Отправка данных админу из чата координаторов

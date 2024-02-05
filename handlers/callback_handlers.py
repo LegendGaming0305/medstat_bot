@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile
 import json
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 import re
 import datetime
 
@@ -348,7 +348,10 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
     from non_script_files.config import COORD_CHAT
     if 'dec_app' in callback_data:
         callback_data = callback_data.split(":")
-        await bot.send_message(chat_id = int(callback_data[1]), text="Ваша заявка была отклонена")
+        try:
+            await bot.send_message(chat_id = int(callback_data[1]), text="Ваша заявка была отклонена")
+        except TelegramForbiddenError:
+            pass
         await db.update_registration_status(string_id=callback_data[2],
                                             admin_id=callback.from_user.id,
                                             reg_status="Decline")
@@ -362,8 +365,11 @@ async def process_admin(callback: types.CallbackQuery, state: FSMContext) -> Non
         link = await bot.create_chat_invite_link(chat_id=COORD_CHAT,
                                           name='Чат координаторов',
                                           member_limit=1)
-        await bot.send_message(chat_id=int(callback_data[1]),
-                               text=f'Ваша заявка была подтверждена\nПройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
+        try:
+            await bot.send_message(chat_id=int(callback_data[1]),
+                                    text=f'Ваша заявка была подтверждена\nПройдите по данной ссылке и заполните дополнительную информацию {link.invite_link}')
+        except TelegramForbiddenError:
+            pass
         await db.update_registration_status(string_id=callback_data[2],
                                             admin_id=callback.from_user.id,
                                             reg_status="Accept")
@@ -623,7 +629,6 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="""Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже. Для возврата в главное меню воспользуйтесь кнопкой 'Возврат в главное меню'""", reply_markup=Admin_Keyboards.application_gen(page_value=1, unreg_tuple=await db.get_unregistered()).as_markup())
         await state.set_state(Admin_states.registration_process)
-        await state.update_data(page='1')
         await state.update_data(page='1')
     elif callback.data == 'publications':
         publications = await db.get_posts_to_public()

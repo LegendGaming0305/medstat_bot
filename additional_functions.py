@@ -180,19 +180,22 @@ async def create_questions(specialist_id: int, form: str = None, question_status
         rows = await db.get_specialits_questions(specialist_id=specialist_id, question_status=question_status)
     questions = []
     for row in rows:
+        user_id = await db.get_lp_user_info(lp_user_id=row['lp_user_id']) ; user_id = user_id[1] ; user_id = user_id['user_id']
+        subj_name = await db.get_subject_name(user_id=user_id)
+        
         try:
             data = {'question': row['question_content'],
                 'lp_user_id': row['lp_user_id'],
                 'form_name': row['form_name'],
                 'message_id': row['question_message'],
-                'subject_name': row['subject_name'],
+                'subject_name': subj_name,
                 'spec_answer': row['answer_content']}
         except KeyError:
             data = {'question': row['question_content'],
                 'lp_user_id': row['lp_user_id'],
                 'form_name': row['form_name'],
                 'message_id': row['question_message'],
-                'subject_name': row['subject_name']}
+                'subject_name': subj_name}
         
         questions.append(data)
     return tuple(questions)     

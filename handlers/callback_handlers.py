@@ -15,7 +15,6 @@ from additional_functions import document_loading, object_type_generator, save_t
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
-
 db = Database()
 router = Router()
 
@@ -190,6 +189,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
+    from additional_functions import choose_form, create_questions
     '''
     Выбор вопроса специалистом
     '''
@@ -242,8 +242,9 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             pass
     elif callback.data == 'choose_question':
         markup = InlineKeyboardBuilder()
-        id = callback.message.html_text.split('<s>')[1].strip()
-        message_id = int(id[:len(id) - 4])
+        # id = callback.message.html_text.split('<s>')[1].strip()
+        # message_id = int(id[:len(id) - 4])
+        message_id = int(re.split(pattern="</?s>", string=callback.message.html_text)[1])
         question_info = callback.message.html_text.split('</b>')
         question_id = await db.get_question_id(question=callback.message.text.split('Вопрос:')[1].split(':\n')[0].strip(),
                                                message_id=message_id)
@@ -289,35 +290,51 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
     elif "admin" in callback.data:
         from additional_functions import create_questions
         callback_data = callback.data.split(":")[1]
-        await state.set_state(Admin_states.answers_form)
-        data = await state.get_data()
-        operation_type = data["operation_type"]
-        await state.set_state(Specialist_states.choosing_question)
-        flag = False
-        if operation_type == "unanswered":
-            questions = await create_questions(callback.from_user.id, form=callback_data)
-        else:
-            questions = await create_questions(callback.from_user.id, question_status="Accept", form=callback_data)
-            flag = True
-        await callback.message.edit_text('Выберите вопрос')
-        message_ids = []
-        for question in questions:
-            lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
-            user_name = lp_user_info[0][1]
-            try:
-                message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+        
+        if "back" not in callback_data:
+            await state.set_state(Admin_states.answers_form)
+            data = await state.get_data()
+            operation_type = data["operation_type"]
+            await state.set_state(Specialist_states.choosing_question)
+            flag = False
+            if operation_type == "unanswered":
+                questions = await create_questions(callback.from_user.id, form=callback_data)
+            else:
+                questions = await create_questions(callback.from_user.id, question_status="Accept", form=callback_data)
+                flag = True
+            await callback.message.edit_text('Выберите вопрос')
+            message_ids = []
+            for question in questions:
+                lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+                user_name = lp_user_info[0][1]
+                try:
+                    message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                        reply_markup=Specialist_keyboards.question_buttons())
+                except KeyError:
+                    message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
-            except KeyError:
-                message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
-                                                reply_markup=Specialist_keyboards.question_buttons())
-            message_ids.append(message.message_id)
-        await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                    reply_markup=Specialist_keyboards.questions_gen(flag=flag, in_the_section=callback_data))
-        try:
-            await state.update_data(message_ids=message_ids)
-        except UnboundLocalError:
-            pass
-    
+                message_ids.append(message.message_id)
+            await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                        reply_markup=Specialist_keyboards.questions_gen(flag=flag, in_the_section=callback_data))
+            try:
+                await state.update_data(message_ids=message_ids)
+            except UnboundLocalError:
+                pass
+        else:
+            operation_type = callback_data.split("_")[1]
+            
+            if operation_type == "unanswered":
+                forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin")
+                questions = await create_questions(callback.from_user.id)
+            elif operation_type == "answered":
+                forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin", question_status="Accept")
+                questions = await create_questions(callback.from_user.id, question_status="Accept")
+            
+            if forms is True:
+                await state.set_state(Admin_states.answers_form)
+                await state.update_data(operation_type=operation_type)
+                return
+        
 @router.callback_query(Admin_states.delete_member)
 async def delete_chat_members(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''

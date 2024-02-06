@@ -341,12 +341,14 @@ class Specialist_keyboards():
         specialist_starting_keyboard = InlineKeyboardBuilder()
 
         unanswered_questions = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question:unanswered') if in_the_section == None else InlineKeyboardButton(text='Ответить на вопросы', callback_data=f'admin:{in_the_section}')
-        answered_questions = InlineKeyboardButton(text='Вывести отвеченные вопросы', callback_data='answer_the_question:answered') if in_the_section == None else InlineKeyboardButton(text='Ответить на вопросы', callback_data=f'admin:{in_the_section}')
-
+        answered_questions = InlineKeyboardButton(text='Вывести отвеченные вопросы', callback_data='answer_the_question:answered') if in_the_section == None else InlineKeyboardButton(text='Вывести отвеченные вопросы', callback_data=f'admin:{in_the_section}')
+        
         if flag == False:
             specialist_starting_keyboard.add(unanswered_questions)
+            specialist_starting_keyboard.add(InlineKeyboardButton(text="Вернуться к формам", callback_data="admin:back_unanswered")) if in_the_section != None else None
         else:
             specialist_starting_keyboard.add(answered_questions)
+            specialist_starting_keyboard.add(InlineKeyboardButton(text="Вернуться к формам", callback_data="admin:back_answered")) if in_the_section != None else None
 
         specialist_starting_keyboard.adjust(1)
         return specialist_starting_keyboard.as_markup()

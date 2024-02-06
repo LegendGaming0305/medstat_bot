@@ -420,7 +420,6 @@ class Database():
             # time.sleep(2)
             await self.get_specform(form_name, user_id)
 
-
     async def get_spec_info_by_user_id(self, user_id: int):
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
@@ -545,26 +544,26 @@ class Database():
             await self.create_connection()
 
         if ignore_forms == False:
-            result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name
+            if question_status == "Pending":
+                result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name
                                                 FROM questions_forms q
                                                 JOIN form_types ft ON q.section_form = ft.id
                                                 JOIN low_priority_users lp ON q.lp_user_id = lp.id
                                                 JOIN registration_process rp ON lp.registration_process_id = rp.id
-                                                WHERE ft.form_tag = $1 AND q.question_state = $2''', form_name, question_status) if question_status == "Pending" else await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name, answer_content
-                                                FROM questions_forms q
-                                                JOIN form_types ft ON q.section_form = ft.id
-                                                JOIN low_priority_users lp ON q.lp_user_id = lp.id
-                                                JOIN registration_process rp ON lp.registration_process_id = rp.id
-                                                JOIN answer_process ap ON q.id = ap.question_id
                                                 WHERE ft.form_tag = $1 AND q.question_state = $2''', form_name, question_status)
-            
+            else: 
+                result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, ap.answer_content, ft.form_tag
+                                                FROM questions_forms q
+                                                JOIN form_types ft ON q.section_form = ft.id
+                                                JOIN low_priority_users lp ON q.lp_user_id = lp.id
+                                                JOIN answer_process ap ON q.id = ap.question_id
+                                                WHERE ft.form_tag = $1 AND q.question_state = $2 AND ap.answer_content != 'Вопрос взят';''', form_name, question_status)
         else:
             result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, ft.form_tag, q.question_message, rp.subject_name
                                                 FROM questions_forms q
                                                 JOIN form_types ft ON q.section_form = ft.id
                                                 JOIN low_priority_users lp ON q.lp_user_id = lp.id
                                                 JOIN registration_process rp ON lp.registration_process_id = rp.id
-                                                WHERE q.question_state = $1
-                                            ''', question_status)
+                                                WHERE q.question_state = $1''', question_status)
         return result
     

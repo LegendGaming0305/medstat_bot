@@ -280,16 +280,26 @@ class Database():
     async def get_specialits_questions(self, specialist_id: int, question_status: str = "Pending") -> list:
         if self.connection is None or self.connection.is_closed():
             await self.create_connection()
-
-        result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name
+        
+        if question_status == "Accept":
+            result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name, ap.answer_content
                                                 FROM questions_forms q
                                                 JOIN form_types ft ON q.section_form = ft.id
                                                 JOIN specialist_forms sf ON ft.id = sf.form_id
                                                 JOIN high_priority_users hp ON sf.specialist_id = hp.id
                                                 JOIN low_priority_users lp ON q.lp_user_id = lp.id
                                                 JOIN registration_process rp ON lp.registration_process_id = rp.id
-                                                WHERE hp.user_id = $1 AND q.question_state = $2
-                                            ''', specialist_id, question_status)
+                                                JOIN answer_process ap ON q.id = ap.question_id
+                                                WHERE hp.user_id = $1 AND q.question_state = $2''', specialist_id, question_status)
+        else:
+            result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, rp.subject_name
+                                                FROM questions_forms q
+                                                JOIN form_types ft ON q.section_form = ft.id
+                                                JOIN specialist_forms sf ON ft.id = sf.form_id
+                                                JOIN high_priority_users hp ON sf.specialist_id = hp.id
+                                                JOIN low_priority_users lp ON q.lp_user_id = lp.id
+                                                JOIN registration_process rp ON lp.registration_process_id = rp.id
+                                                WHERE hp.user_id = $1 AND q.question_state = $2''', specialist_id, question_status)
         return result
     
     async def answer_process_report(self, question_id: int, answer: str, specialist_id: int) -> None:
@@ -297,13 +307,18 @@ class Database():
             await self.create_connection()
 
         specialist_id = await self.connection.fetchval('''SELECT id FROM high_priority_users WHERE user_id = ($1)''', specialist_id)
+        question_existence = await self.connection.fetchrow('''SELECT * FROM answer_process WHERE question_id = $1''', question_id)
 
         if answer == "Закрытие вопроса":
             await self.connection.execute('''UPDATE questions_forms SET question_state = 'Decline' WHERE id = ($1)''', question_id)
             await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id)
         else:
             await self.connection.execute('''UPDATE questions_forms SET question_state = 'Accept' WHERE id = ($1)''', question_id)
-            await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id)
+            
+            if question_existence == None: 
+                await self.connection.execute('''INSERT INTO answer_process (question_id, answer_content, specialist_id) VALUES ($1, $2, $3)''', question_id, answer, specialist_id) 
+            else:
+                await self.connection.execute('''UPDATE answer_process SET answer_content = $1, specialist_id = $2 WHERE question_id = $3''', answer, specialist_id, question_id)
 
     async def check_question(self, question_id: int, message_id: int) -> str:
         if self.connection is None or self.connection.is_closed():
@@ -566,4 +581,8 @@ class Database():
                                                 JOIN registration_process rp ON lp.registration_process_id = rp.id
                                                 WHERE q.question_state = $1''', question_status)
         return result
+    
+    
+    
+    
     

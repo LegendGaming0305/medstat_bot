@@ -374,9 +374,11 @@ class Database():
         
         if inputed_question_id != 0:
             question_data = await self.connection.fetchrow('''
-                SELECT questions_forms.*, form_types.form_name
+                SELECT questions_forms.*, form_types.form_name, rp.subject_name
                 FROM questions_forms
                 JOIN form_types ON questions_forms.section_form = form_types.id
+                JOIN low_priority_users lp ON questions_forms.lp_user_id = lp.id
+                JOIN registration_process rp ON lp.registration_process_id = rp.id
                 WHERE questions_forms.id = $1
             ''', inputed_question_id)
 

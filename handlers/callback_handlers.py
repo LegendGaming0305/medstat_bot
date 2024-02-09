@@ -11,13 +11,14 @@ from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
 from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition, question_redirect
-from additional_functions import document_loading, object_type_generator, save_to_txt
+from additional_functions import document_loading, object_type_generator, save_to_txt, MessageInteraction
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
 
 db = Database()
 router = Router()
+message_int = MessageInteraction()
 
 @router.callback_query(F.data.contains('district') | F.data.contains('region'))
 async def process_miac_selection(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -141,13 +142,13 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
                 if pattern in row:
                     found_data.append(pattern)
         return set(found_data)
-
+    question_text = data['question']
+    message_int.parse_message(question_text)
     question_message_id = await db.get_question_message_id(question_id=data['question_id'])
-    question_text = data['question'] ; question_text_for_user = question_text.split("\n")
-    question = question_text.split(':</b>')[1].split(':\n<s>')[0].strip()
+    question = message_int.question
     tuple_of_info = await db.get_lp_user_info(lp_user_id=data['user_id'])
     user_id = tuple_of_info[1][1]
-    form_type = question_text_for_user[2].split(":") ; form_type = form_type[1].strip()
+    form_type = message_int.form_name
     form_type = form_type[:25] + "..." if len(form_type) > 25 else form_type
 
     try:
@@ -161,7 +162,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
     if callback.data == "private_message":
         found_data = tuple(callback_addition())
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
-        await bot.send_message(chat_id=user_id, text=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
+        await bot.send_message(chat_id=user_id, text=f'<b>Вопрос:</b> {question}\n<b>Ответ</b>: {data["spec_answer"]}', reply_to_message_id=question_message_id)
         message = await callback.message.reply(f'Ответ отправлен пользователю в личные сообщения')
         await message_delition(message, time_sleep=10)
     elif "form_type" in callback.data:
@@ -169,7 +170,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         await callback.message.edit_reply_markup(inline_message_id=str(data['menu'].message_id), reply_markup=Specialist_keyboards.publication_buttons(spec_forms=form_type, found_patterns=found_data))
         await bot.send_message(chat_id=-1001994572201, text=f'<b>Вопрос</b>:{question}\n\n<b>Ответ</b>: {data["spec_answer"]}', message_thread_id=FORMS[form_type])
         query_dict, file_id = extracting_query_info(query=callback)
-        await db.add_suggestion_to_post(post_content=f'{question_text_for_user[3]}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
+        await db.add_suggestion_to_post(post_content=f'{question}\n<b>Ответ</b>: {data["spec_answer"]}', post_suggestor=callback.from_user.id, pub_type_tuple=tuple(query_dict.values()), pub_state='Accept')
         message = await callback.message.reply(f'Ответ отправлен в канал формы: {form_type}')
         await message_delition(message, time_sleep=10)
     elif callback.data == 'open_chat_public':
@@ -195,6 +196,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
     '''
     if 'dialogue_history' in callback.data:
         from cache_container import Data_storage
+        message_int.parse_message(callback.message.html_text)
         page_number = 1
         history_text = "" ; NEXT_STRING = "\n"
 
@@ -203,10 +205,9 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             page_number = 1 if passed_values == 4 else passed_values // 4 
             information_tuple = await db.get_user_history(question_id=Data_storage.question_id, values_range=[4, 4 * page_number])
         else:
-            id = callback.message.html_text.split('<s>')[1].strip()
-            message_id = int(id[:len(id) - 4])
-            question_info = callback.message.html_text.split('</b>')
-            Data_storage.question_id = await db.get_question_id(question=question_info[1].split(':')[0].strip(),
+            message_id = int(message_int.message_id)
+            question_info = message_int.question
+            Data_storage.question_id = await db.get_question_id(question=question_info,
                                                                 message_id=message_id)
             information_tuple = await db.get_user_history(question_id=Data_storage.question_id)
 
@@ -225,7 +226,12 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+            text = message_int.create_message(user_id=user_name,
+                                              subject=question['subject_name'],
+                                              form_name=question['form_name'],
+                                              question=question['question'],
+                                              message_id=question['message_id'])
+            message = await callback.message.answer(text=text, 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
@@ -235,14 +241,14 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         except UnboundLocalError:
             pass
     elif callback.data == 'choose_question':
+        message_int.parse_message(callback.message.html_text)
         markup = InlineKeyboardBuilder()
-        id = callback.message.html_text.split('<s>')[1].strip()
-        message_id = int(id[:len(id) - 4])
-        question_info = callback.message.html_text.split('</b>')
-        question_id = await db.get_question_id(question=callback.message.text.split('Вопрос:')[1].split(':\n')[0].strip(),
+        message_id = int(message_int.message_id)
+        question_info = message_int.question
+        question_id = await db.get_question_id(question=question_info,
                                                message_id=message_id)
         result_check = await db.check_question(question_id=question_id, message_id=message_id)
-        lp_user_id = await db.get_user_id(question=callback.message.text.split(':')[4].strip(), message_id=message_id)
+        lp_user_id = await db.get_user_id(question=question_info, message_id=message_id)
         if result_check == 'Вопрос взят':
             await callback.message.edit_text(f'<b>Вопрос взят</b>\n{callback.message.html_text}')
             await callback.message.answer('Выберите другой вопрос, так как на этот уже отвечает другой специалист')
@@ -258,10 +264,10 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                     question=callback.message.html_text,
                                     user_id=lp_user_id)
     elif callback.data == 'close_question':
-        id = callback.message.html_text.split('<s>')[1].strip()
-        message_id = int(id[:len(id) - 4])
-        question_info = callback.message.html_text.split('</b>')
-        question_id = await db.get_question_id(question=question_info[1].split(':')[0].strip(),
+        message_int.parse_message(callback.message.html_text)
+        message_id = int(message_int.message_id)
+        question_info = message_int.question
+        question_id = await db.get_question_id(question=question_info,
                                                message_id=message_id)
         await db.answer_process_report(question_id=int(question_id),
                                  answer='Закрытие вопроса',
@@ -275,10 +281,16 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         data = {'question': question_info['question_content'],
                 'lp_user_id': question_info['lp_user_id'],
                 'form_name': question_info['form_name'],
-                'message_id': question_info['question_message']}
+                'message_id': question_info['question_message'],
+                'subject_name': question_info['subject_name']}
         
         lp_user_info = await db.get_lp_user_info(lp_user_id=data['lp_user_id']) ; user_name = lp_user_info[0][3]
-        message = await callback.message.edit_text(text=f'Пользователь: {user_name}\nФорма: {data["form_name"]}\n<b>Вопрос:</b> {data["question"]}:\n<s>{data["message_id"]}</s>', 
+        text = message_int.create_message(user_id=user_name,
+                                              subject=data['subject_name'],
+                                              form_name=data['form_name'],
+                                              question=data['question'],
+                                              message_id=data['message_id'])
+        message = await callback.message.edit_text(text=text, 
                                         reply_markup=Specialist_keyboards.question_buttons())
 
 @router.callback_query(Admin_states.delete_member)
@@ -536,7 +548,12 @@ async def process_choosing_answers_form(callback: types.CallbackQuery, state: FS
     for question in questions:
         lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
         user_name = lp_user_info[0][1]
-        message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+        text = message_int.create_message(user_id=user_name,
+                                              subject=question['subject_name'],
+                                              form_name=question['form_name'],
+                                              question=question['question'],
+                                              message_id=question['message_id'])
+        message = await callback.message.answer(text=text, 
                                                 reply_markup=Specialist_keyboards.question_buttons())
         message_ids.append(message.message_id)
     await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
@@ -617,7 +634,12 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+            text = message_int.create_message(user_id=user_name,
+                                              subject=question['subject_name'],
+                                              form_name=question['form_name'],
+                                              question=question['question'],
+                                              message_id=question['message_id'])
+            message = await callback.message.answer(text=text, 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',

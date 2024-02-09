@@ -1,16 +1,18 @@
 import json
+from typing import List, Tuple
+import datetime
+import pandas as pd
+import re
 from functools import wraps
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton
-from fuzzywuzzy import fuzz
 from aiogram.fsm.context import FSMContext
-from aiogram import types
-import pandas as pd
-from db_actions import Database
-from asyncio import sleep
 from aiogram.exceptions import TelegramBadRequest
-import datetime
-from typing import List, Tuple
+from aiogram import types
+from asyncio import sleep
+from fuzzywuzzy import fuzz
+
+from db_actions import Database
 
 db = Database()
 
@@ -413,11 +415,29 @@ async def account_link(url: str):
     markup.add(link)
     return markup.as_markup()
         
+class MessageInteraction:
+    def __init__(self):
+        self.user_id = None
+        self.subject = None
+        self.form_name = None
+        self.question = None
+        self.message_id = None
+        self.attributes = {
+            'user_id': r'<b>Пользователь:</b>\s*([\d]+)',
+            'subject': r'<b>Субъект:</b>\s*([^<]+)',
+            'form_name': r'<b>Форма:</b>\s*\s*([^<]+)',
+            'question': r'<b>Вопрос:</b>\s*([^<]+)',
+            'message_id': r'<s>([\d]+)</s>'
+        }
 
+    def parse_message(self, message: str):
+        message = message.replace('\n', '')
+        for attr, pattern in self.attributes.items():
+            match = re.search(pattern, message)
+            if match:
+                setattr(self, attr, match.group(1))
 
-        
+    def create_message(self, user_id: int, subject: str, form_name: str, question: str, message_id: int):
+        return f'<b>Пользователь:</b> {user_id}\n<b>Субъект:</b> {subject}\n<b>Форма:</b> {form_name}\n<b>Вопрос:</b> {question}\n<s>{message_id}</s>'
 
-        
-
-        
 

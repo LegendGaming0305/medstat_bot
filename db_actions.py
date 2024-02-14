@@ -133,6 +133,11 @@ class Database():
                                       button_type VARCHAR(50) NOT NULL,
                                       admin_id BIGINT CHECK (admin_id > 0) NOT NULL,
                                       FOREIGN KEY (admin_id) REFERENCES high_priority_users (id))''')
+        await self.connection.execute('''CREATE TABLE IF NOT EXISTS regions_links (
+                                      id SERIAL PRIMARY KEY,
+                                      region_id INT CHECK (region_id > 0) NOT NULL,
+                                      link VARCHAR(100),
+                                      FOREIGN KEY (region_id) REFERENCES regions (id))''')
 
     async def add_registration_form(self, *args) -> None:
         '''
@@ -384,9 +389,11 @@ class Database():
         
         if inputed_question_id != 0:
             question_data = await self.connection.fetchrow('''
-                SELECT questions_forms.*, form_types.form_name
+                SELECT questions_forms.*, form_types.form_name, rp.subject_name
                 FROM questions_forms
                 JOIN form_types ON questions_forms.section_form = form_types.id
+                JOIN low_priority_users lp ON questions_forms.lp_user_id = lp.id
+                JOIN registration_process rp ON lp.registration_process_id = rp.id
                 WHERE questions_forms.id = $1
             ''', inputed_question_id)
 
@@ -582,7 +589,17 @@ class Database():
                                                 WHERE q.question_state = $1''', question_status)
         return result
     
-    
-    
-    
-    
+    async def get_link(self, user_id: int):
+        '''
+        Возвращает ссылку на чат по согласованию форм
+        '''
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+
+        result = await self.connection.fetch('''SELECT rl.link
+                                                FROM regions_links rl
+                                                JOIN regions rg ON rl.region_id = rg.id
+                                                JOIN registration_process rp ON rg.region_name = rp.subject_name
+                                                WHERE rp.user_id = $1''', user_id)
+        
+        return result

@@ -1,16 +1,18 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 import json
+from typing import List, Tuple
+import datetime
+import pandas as pd
+import re
 from functools import wraps
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from fuzzywuzzy import fuzz
+from aiogram.types import InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
-from aiogram import types
-import pandas as pd
-from db_actions import Database
-from asyncio import sleep
 from aiogram.exceptions import TelegramBadRequest
-import datetime
-from typing import List, Tuple, Union
+from aiogram import types
+from asyncio import sleep
+from fuzzywuzzy import fuzz
+
+from db_actions import Database
 
 db = Database()
 
@@ -141,9 +143,9 @@ def user_registration_decorator(func):
                 await db.update_user_info(user_id=kwargs['user_id'], telegram_name=kwargs['default_query'].from_user.full_name)
                 status = await db.get_status(user_id=kwargs['user_id'])
                 if status is None or status == 'Decline':
-                    await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(False).as_markup())
+                    await kwargs['answer_type'].answer('Меню', reply_markup=await User_Keyboards.main_menu(False))
                 elif status in ('Accept', 'Pending'):
-                    await kwargs['answer_type'].answer('Меню', reply_markup=User_Keyboards.main_menu(True).as_markup())
+                    await kwargs['answer_type'].answer('Меню', reply_markup=await User_Keyboards.main_menu(True, kwargs['user_id']))
 
             return await func(query_type, state)
         return await registration(query_type, state)
@@ -188,14 +190,14 @@ async def create_questions(specialist_id: int, form: str = None, question_status
                 'lp_user_id': row['lp_user_id'],
                 'form_name': row['form_name'],
                 'message_id': row['question_message'],
-                'subject_name': subj_name,
+                'subject_name': row['subject_name'],
                 'spec_answer': row['answer_content']}
         except KeyError:
             data = {'question': row['question_content'],
                 'lp_user_id': row['lp_user_id'],
                 'form_name': row['form_name'],
                 'message_id': row['question_message'],
-                'subject_name': subj_name}
+                'subject_name': row['subject_name']}
         
         questions.append(data)
     return tuple(questions)     
@@ -416,13 +418,38 @@ async def object_type_generator(obj_type, types_array: List[Tuple[str, datetime.
         
         yield types_array
      
-
+async def account_link(url: str):
+    '''
+    Создание кнопки с ссылкой на аккаунт
+    '''
+    markup = InlineKeyboardBuilder()
+    link = InlineKeyboardButton(text='Аккаунт', url=url)
+    markup.add(link)
+    return markup.as_markup()
         
+class MessageInteraction:
+    def __init__(self):
+        self.user_id = None
+        self.subject = None
+        self.form_name = None
+        self.question = None
+        self.message_id = None
+        self.attributes = {
+            'user_id': r'<b>Пользователь:</b>\s*([\d]+)',
+            'subject': r'<b>Субъект:</b>\s*([^<]+)',
+            'form_name': r'<b>Форма:</b>\s*\s*([^<]+)',
+            'question': r'<b>Вопрос:</b>\s*([^<]+)',
+            'message_id': r'<s>([\d]+)</s>'
+        }
 
+    def parse_message(self, message: str):
+        message = message.replace('\n', '')
+        for attr, pattern in self.attributes.items():
+            match = re.search(pattern, message)
+            if match:
+                setattr(self, attr, match.group(1))
 
-        
+    def create_message(self, user_id: int, subject: str, form_name: str, question: str, message_id: int):
+        return f'<b>Пользователь:</b> {user_id}\n<b>Субъект:</b> {subject}\n<b>Форма:</b> {form_name}\n<b>Вопрос:</b> {question}\n<s>{message_id}</s>'
 
-        
-
-        
 

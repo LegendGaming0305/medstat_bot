@@ -50,11 +50,11 @@ async def process_telephone_number_input(message: types.Message, state: FSMConte
     Получение наименования должности
     '''
     await state.update_data(post=message.text)
-    await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
-После чего Вы сможете задать вопрос специалисту и получить доступ к каналам разделов форм''', reply_markup=User_Keyboards.main_menu(True).as_markup())
     await db.add_registration_form(message.from_user.id, await state.get_data())
     await db.after_registration_process(message.from_user.id, message.from_user.full_name)
     await db.update_user_info(user_id=message.from_user.id, telegram_name=message.from_user.full_name)
+    await message.answer('''Ваши данные отправлены на проверку, ожидайте подтверждения.
+После чего Вы сможете задать вопрос специалисту и получить доступ к каналам разделов форм''', reply_markup=await User_Keyboards.main_menu(True, user_id=message.from_user.id))
     await state.clear()
 
 @router.message(User_states.fuzzy_process)
@@ -104,11 +104,13 @@ async def process_answer(message: types.Message, state: FSMContext) -> None:
 @router.message(F.text.contains('/send'))
 async def process_sending_ids(message: types.message):
     from main import bot
+    from additional_functions import account_link
     info = message.text.split(',')
     user_id = info[0][6:]
     subject = info[1]
     fio = info[2]
-    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {user_id}\nСубъект: {subject}\n{fio}')
+    forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {user_id}\nСубъект: {subject}\n{fio}',
+                                     reply_markup=await account_link(url=f'tg://user?id={user_id}'))
     await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
 
 @router.message(Specialist_states.complex_public)
@@ -273,18 +275,20 @@ async def test(message: types.Message):
 async def chat_id_extraction(message: types.Message):
     save_to_txt(chat_information=f'''chat_id={message.chat.id}\nthread_id={message.message_thread_id}\nchat_name={message.chat.full_name}\n\n''')
 
-@router.message(F.text.regexp(r'^[\s]*([а-яА-ЯёЁ]+\s[а-яА-ЯёЁ]+\s?[а-яА-ЯёЁ]+)[\s|,]*\+?\d+([\(\s\-]?\d+[\)\s\-]?[\d\s\-]+)?$'))
+@router.message(F.text.regexp(r'^[\s]*([а-яА-ЯёЁ]+\s[а-яА-ЯёЁ]+\s?[а-яА-ЯёЁ]+)[\s|,]*\+?\d+\s?([\(\s\-]?\d+[\)\s\-]?[\d\s\-]+)?$'))
 async def sending_information(message: types.Message) -> None:
     '''
     Отправка данных админу из чата координаторов
     '''
     from main import bot
     from cache_container import cache
+    from additional_functions import account_link
 
     cache_data = await cache.get(f"greeting:{message.from_user.id}")
     subject = await db.get_subject_name(user_id=message.from_user.id)
     try:
-        forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}')
+        forward = await bot.send_message(chat_id=5214835464, text=f'Новые полученные данные от пользователя с user_id: {message.from_user.id}\nСубъект: {subject}\n{message.text}',
+                                         reply_markup=await account_link(message.from_user.url))
         await bot.pin_chat_message(chat_id=5214835464, message_id=forward.message_id)
     except Exception as ex:
         pass

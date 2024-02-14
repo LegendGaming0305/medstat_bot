@@ -180,6 +180,7 @@ class Admin_Keyboards():
         sections = InlineKeyboardButton(text="Разделы форм", callback_data='sections_join', url="https://t.me/+cNQvBD_FWpQxZWRi")
         file_button = InlineKeyboardButton(text="Загрузить файлы", callback_data='load_file')
         delete_member = InlineKeyboardButton(text='Удалить пользователя из чата', callback_data='delete_member')
+        send_private_message = InlineKeyboardButton(text="Отправить пользователю сообщение", callback_data="send_to_user")
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
@@ -188,7 +189,8 @@ class Admin_Keyboards():
                                     coord_chat,
                                     sections,
                                     file_button,
-                                    delete_member)
+                                    delete_member,
+                                    send_private_message)
         admin_starting_keyboard.adjust(1, repeat=True)
         return admin_starting_keyboard.as_markup()
        

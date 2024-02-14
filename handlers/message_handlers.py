@@ -226,6 +226,45 @@ async def get_ids_to_delete(message: types.Message, state: FSMContext):
     await message.answer(text='Выберите в каком чате удалить пользователя',
                          reply_markup=Admin_Keyboards.delete_in_chat())
 
+@router.message(Admin_states.user_sending)
+async def private_sending_proc(message: types.Message, state: FSMContext):
+    from main import bot
+    data = await state.get_data()
+
+    try:
+        if data["ids_passed"] == True:
+            for u_id in data["user_ids"]:
+                await bot.send_message(chat_id=int(u_id), text=message.text)
+                msg = await message.answer(text=f"Сообщение отправлено пользователю с id = {u_id}")
+                await message_delition(msg, time_sleep=5)
+            await state.update_data(ids_passed=False)
+            msg_end = await message.answer(text="Отправка завершена. Вернитесь в главное меню или совершите отправку сообщения пользователям, в первую очередь указав их id")
+            await message_delition(msg_end, time_sleep=10)
+        else:
+            if "\n" in message.text:
+                await state.update_data(user_ids=(*message.text.split("\n"),))
+            elif "," in message.text:
+                await state.update_data(user_ids=(*message.text.split(","),)) 
+            else:
+                await state.update_data(user_ids=(message.text,))
+        
+            await state.update_data(ids_passed=True)
+            await message.delete()
+            msg_send = await message.answer(text="Введите текст сообщения для отправки пользователю(ям)")
+            await message_delition(msg_send, time_sleep=10)
+    except KeyError:
+        if "\n" in message.text:
+            await state.update_data(user_ids=(*message.text.split("\n"),))
+        elif "," in message.text:
+            await state.update_data(user_ids=(*message.text.split(","),)) 
+        else:
+            await state.update_data(user_ids=(message.text,))
+
+        await state.update_data(ids_passed=True)
+        await message.delete()
+        msg_send = await message.answer(text="Введите текст сообщения для отправки пользователю(ям)")
+        await message_delition(msg_send, time_sleep=10)
+
 @router.message(F.document)
 async def test(message: types.Message):
     print(message.document)

@@ -749,7 +749,9 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'delete_member':
         await callback.message.edit_text(text='Введите один или несколько user_id через запятую')
         await state.set_state(Admin_states.delete_member)
-
+    elif callback.data == 'send_to_user':
+        cb_msg = await callback.message.edit_text(text="Введите id пользователя(ей), после чего отправьте текстовое сообщение для рассылки пользователю(ям). Если пользователей больще одного, то вводите id через ',' или помещайте каждый новый id на новой строке (ctrl + enter)")
+        await state.set_state(Admin_states.user_sending)
 
 
 

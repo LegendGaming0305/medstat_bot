@@ -191,6 +191,7 @@ async def redirecting_data(callback: types.CallbackQuery, state: FSMContext) -> 
         
 @router.callback_query(Specialist_states.choosing_question)
 async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> None:
+    from additional_functions import choose_form, create_questions
     '''
     Выбор вопроса специалистом
     '''
@@ -218,15 +219,25 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             history_text += f"""{''.join([f'{elem[0]} - {elem[1]}{NEXT_STRING}' for elem in list(history[i][1].items())])}\n\n"""
         history_text += f"Номер страницы: {page_number + 1}"
         await callback.message.edit_text(text=history_text, reply_markup=Specialist_keyboards.question_buttons(condition=(Data_storage.question_id, information_tuple[2], 4 * page_number)))
-    elif callback.data == 'answer_the_question':
+    elif 'answer_the_question' in callback.data:
+        operation_type = callback.data.split(":")[1]
+        flag = False
         await state.set_state(Specialist_states.choosing_question)
-        questions = await create_questions(callback.from_user.id)
+        if operation_type == "unanswered":
+            questions = await create_questions(callback.from_user.id)
+        else:
+            questions = await create_questions(callback.from_user.id, question_status="Accept")
+            flag = True
         await callback.message.edit_text('Выберите вопрос')
         message_ids = []
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            text = message_int.create_message(user_id=user_name,
+            try:
+                message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                reply_markup=Specialist_keyboards.question_buttons())
+            except KeyError:
+                text = message_int.create_message(user_id=user_name,
                                               subject=question['subject_name'],
                                               form_name=question['form_name'],
                                               question=question['question'],
@@ -235,7 +246,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                    reply_markup=Specialist_keyboards.questions_gen())
+                                    reply_markup=Specialist_keyboards.questions_gen(flag))
         try:
             await state.update_data(message_ids=message_ids)
         except UnboundLocalError:
@@ -292,7 +303,54 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                               message_id=data['message_id'])
         message = await callback.message.edit_text(text=text, 
                                         reply_markup=Specialist_keyboards.question_buttons())
-
+    elif "admin" in callback.data:
+        from additional_functions import create_questions
+        callback_data = callback.data.split(":")[1]
+        
+        if "back" not in callback_data:
+            await state.set_state(Admin_states.answers_form)
+            data = await state.get_data()
+            operation_type = data["operation_type"]
+            await state.set_state(Specialist_states.choosing_question)
+            flag = False
+            if operation_type == "unanswered":
+                questions = await create_questions(callback.from_user.id, form=callback_data)
+            else:
+                questions = await create_questions(callback.from_user.id, question_status="Accept", form=callback_data)
+                flag = True
+            await callback.message.edit_text('Выберите вопрос')
+            message_ids = []
+            for question in questions:
+                lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+                user_name = lp_user_info[0][1]
+                try:
+                    message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                        reply_markup=Specialist_keyboards.question_buttons())
+                except KeyError:
+                    message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+                                                    reply_markup=Specialist_keyboards.question_buttons())
+                message_ids.append(message.message_id)
+            await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                        reply_markup=Specialist_keyboards.questions_gen(flag=flag, in_the_section=callback_data))
+            try:
+                await state.update_data(message_ids=message_ids)
+            except UnboundLocalError:
+                pass
+        else:
+            operation_type = callback_data.split("_")[1]
+            
+            if operation_type == "unanswered":
+                forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin")
+                questions = await create_questions(callback.from_user.id)
+            elif operation_type == "answered":
+                forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin", question_status="Accept")
+                questions = await create_questions(callback.from_user.id, question_status="Accept")
+            
+            if forms is True:
+                await state.set_state(Admin_states.answers_form)
+                await state.update_data(operation_type=operation_type)
+                return
+        
 @router.callback_query(Admin_states.delete_member)
 async def delete_chat_members(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
@@ -541,14 +599,25 @@ async def process_choosing_answers_form(callback: types.CallbackQuery, state: FS
     Обработка и выдача вопрос по определенной форме для админов
     '''
     from additional_functions import create_questions
+    data = await state.get_data()
+    operation_type = data["operation_type"]
     await state.set_state(Specialist_states.choosing_question)
-    questions = await create_questions(specialist_id=callback.from_user.id, form=callback.data)
+    flag = False
+    if operation_type == "unanswered":
+        questions = await create_questions(callback.from_user.id, form=callback.data)
+    else:
+        questions = await create_questions(callback.from_user.id, question_status="Accept", form=callback.data)
+        flag = True
     await callback.message.edit_text('Выберите вопрос')
     message_ids = []
     for question in questions:
         lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
         user_name = lp_user_info[0][1]
-        text = message_int.create_message(user_id=user_name,
+        try:
+            message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                reply_markup=Specialist_keyboards.question_buttons())
+        except KeyError:
+            text = message_int.create_message(user_id=user_name,
                                               subject=question['subject_name'],
                                               form_name=question['form_name'],
                                               question=question['question'],
@@ -557,7 +626,7 @@ async def process_choosing_answers_form(callback: types.CallbackQuery, state: FS
                                                 reply_markup=Specialist_keyboards.question_buttons())
         message_ids.append(message.message_id)
     await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                reply_markup=Specialist_keyboards.questions_gen())
+                                reply_markup=Specialist_keyboards.questions_gen(flag=flag, in_the_section=callback.data))
     try:
         await state.update_data(message_ids=message_ids)
     except UnboundLocalError:
@@ -621,20 +690,39 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'complex_upload':
         await callback.message.edit_text(text='Прикрепите файл и текстовое описание к нему или же вы можете написать текстовое сообщение-объявление для отправки в раздел форм')
         await state.set_state(Specialist_states.complex_public)
-    elif callback.data == 'answer_the_question':
+    elif 'answer_the_question' in callback.data:
+        operation_type = callback.data.split(":")[1]
         from additional_functions import choose_form
-        result = await choose_form(user_id=callback.from_user.id, callback=callback)
-        if result is True:
+        flag = False
+        # ------------------ ЧАСТЬ АДМИНА -------------------------
+        if operation_type == "unanswered":
+            forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin")
+            questions = await create_questions(callback.from_user.id)
+        elif operation_type == "answered":
+            forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin", question_status="Accept")
+            questions = await create_questions(callback.from_user.id, question_status="Accept")
+            flag = True
+        else:
+            forms = await choose_form(user_id=callback.from_user.id, callback=callback)
+        
+        if forms is True:
             await state.set_state(Admin_states.answers_form)
+            await state.update_data(operation_type=operation_type)
             return
+        # ------------------ ЧАСТЬ АДМИНА -------------------------
+        
+        # ------------------ ЧАСТЬ СПЕЦИАЛИСТА -------------------------
         await state.set_state(Specialist_states.choosing_question)
-        questions = await create_questions(callback.from_user.id)
         await callback.message.edit_text('Выберите вопрос')
         message_ids = []
         for question in questions:
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
-            text = message_int.create_message(user_id=user_name,
+            try:
+                message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                reply_markup=Specialist_keyboards.question_buttons())
+            except KeyError:
+                text = message_int.create_message(user_id=user_name,
                                               subject=question['subject_name'],
                                               form_name=question['form_name'],
                                               question=question['question'],
@@ -643,11 +731,12 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                    reply_markup=Specialist_keyboards.questions_gen())
+                                    reply_markup=Specialist_keyboards.questions_gen(flag))
         try:
             await state.update_data(message_ids=message_ids)
         except UnboundLocalError:
             pass
+        # ------------------ ЧАСТЬ СПЕЦИАЛИСТА -------------------------
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="""Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже. Для возврата в главное меню воспользуйтесь кнопкой 'Возврат в главное меню'""", reply_markup=Admin_Keyboards.application_gen(page_value=1, unreg_tuple=await db.get_unregistered()).as_markup())
         await state.set_state(Admin_states.registration_process)
@@ -688,7 +777,9 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'delete_member':
         await callback.message.edit_text(text='Введите один или несколько user_id через запятую')
         await state.set_state(Admin_states.delete_member)
-
+    elif callback.data == 'send_to_user':
+        cb_msg = await callback.message.edit_text(text="Введите id пользователя(ей), после чего отправьте текстовое сообщение для рассылки пользователю(ям). Если пользователей больще одного, то вводите id через ',' или помещайте каждый новый id на новой строке (ctrl + enter)")
+        await state.set_state(Admin_states.user_sending)
 
 
 

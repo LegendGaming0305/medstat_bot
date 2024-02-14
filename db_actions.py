@@ -574,11 +574,12 @@ class Database():
                                                 JOIN registration_process rp ON lp.registration_process_id = rp.id
                                                 WHERE ft.form_tag = $1 AND q.question_state = $2''', form_name, question_status)
             else: 
-                result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, ap.answer_content, ft.form_tag
+                result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, ap.answer_content, ft.form_tag, rp.subject_name
                                                 FROM questions_forms q
                                                 JOIN form_types ft ON q.section_form = ft.id
                                                 JOIN low_priority_users lp ON q.lp_user_id = lp.id
                                                 JOIN answer_process ap ON q.id = ap.question_id
+                                                JOIN registration_process rp ON lp.registration_process_id = rp.id
                                                 WHERE ft.form_tag = $1 AND q.question_state = $2 AND ap.answer_content != 'Вопрос взят';''', form_name, question_status)
         else:
             result = await self.connection.fetch('''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, ft.form_tag, q.question_message, rp.subject_name

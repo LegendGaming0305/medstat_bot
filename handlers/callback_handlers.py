@@ -614,7 +614,7 @@ async def process_choosing_answers_form(callback: types.CallbackQuery, state: FS
         lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
         user_name = lp_user_info[0][1]
         try:
-            message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+            message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
                                                 reply_markup=Specialist_keyboards.question_buttons())
         except KeyError:
             text = message_int.create_message(user_id=user_name,
@@ -622,7 +622,7 @@ async def process_choosing_answers_form(callback: types.CallbackQuery, state: FS
                                               form_name=question['form_name'],
                                               question=question['question'],
                                               message_id=question['message_id'])
-        message = await callback.message.answer(text=text, 
+            message = await callback.message.answer(text=text, 
                                                 reply_markup=Specialist_keyboards.question_buttons())
         message_ids.append(message.message_id)
     await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
@@ -719,7 +719,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
             try:
-                message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
                                                 reply_markup=Specialist_keyboards.question_buttons())
             except KeyError:
                 text = message_int.create_message(user_id=user_name,
@@ -727,7 +727,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
                                               form_name=question['form_name'],
                                               question=question['question'],
                                               message_id=question['message_id'])
-            message = await callback.message.answer(text=text, 
+                message = await callback.message.answer(text=text, 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
@@ -778,7 +778,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.message.edit_text(text='Введите один или несколько user_id через запятую')
         await state.set_state(Admin_states.delete_member)
     elif callback.data == 'send_to_user':
-        cb_msg = await callback.message.edit_text(text="Введите id пользователя(ей), после чего отправьте текстовое сообщение для рассылки пользователю(ям). Если пользователей больще одного, то вводите id через ',' или помещайте каждый новый id на новой строке (ctrl + enter)")
+        cb_msg = await callback.message.edit_text(text="Введите id пользователя(ей), после чего отправьте текстовое сообщение для рассылки пользователю(ям). Если пользователей больше одного, то вводите id через ',' или помещайте каждый новый id на новой строке (ctrl + enter)")
         await state.set_state(Admin_states.user_sending)
 
 

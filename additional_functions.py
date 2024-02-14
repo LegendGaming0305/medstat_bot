@@ -436,14 +436,13 @@ class MessageInteraction:
         self.message_id = None
         self.attributes = {
             'user_id': r'<b>Пользователь:</b>\s*([\d]+)',
-            'subject': r'<b>Субъект:</b>\s*([^<]+)',
-            'form_name': r'<b>Форма:</b>\s*\s*([^<]+)',
-            'question': r'<b>Вопрос:</b>\s*([^<]+)',
+            'subject': r'<b>Субъект:</b>\s*([^\n<]+)',
+            'form_name': r'<b>Форма:</b>\s*\s*([^\n<]+)',
+            'question': r'<b>Вопрос:</b>\s*([^<]+)\n<s>',
             'message_id': r'<s>([\d]+)</s>'
         }
 
     def parse_message(self, message: str):
-        message = message.replace('\n', '')
         for attr, pattern in self.attributes.items():
             match = re.search(pattern, message)
             if match:

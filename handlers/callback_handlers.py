@@ -234,7 +234,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
             lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
             user_name = lp_user_info[0][1]
             try:
-                message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
                                                 reply_markup=Specialist_keyboards.question_buttons())
             except KeyError:
                 text = message_int.create_message(user_id=user_name,
@@ -242,7 +242,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                               form_name=question['form_name'],
                                               question=question['question'],
                                               message_id=question['message_id'])
-            message = await callback.message.answer(text=text, 
+                message = await callback.message.answer(text=text, 
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
@@ -324,10 +324,10 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                 lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
                 user_name = lp_user_info[0][1]
                 try:
-                    message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
-                                                        reply_markup=Specialist_keyboards.question_buttons())
+                    message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                reply_markup=Specialist_keyboards.question_buttons())
                 except KeyError:
-                    message = await callback.message.answer(f'Пользователь: {user_name}\nСубъект: {question["subject_name"]}\nФорма: {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
+                    message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}:\n<s>{question["message_id"]}</s>', 
                                                     reply_markup=Specialist_keyboards.question_buttons())
                 message_ids.append(message.message_id)
             await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',

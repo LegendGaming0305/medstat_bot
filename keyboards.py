@@ -317,7 +317,7 @@ class Admin_Keyboards():
         delete_keyboard.adjust(1)
         return delete_keyboard.as_markup()
     
-    def delete_file(id: int) -> InlineKeyboardMarkup:
+    def delete_file(id: int, file_name: str) -> InlineKeyboardMarkup:
         delete_file_keyboard = InlineKeyboardBuilder()
 
         delete_button = InlineKeyboardButton(text='Удалить файл', callback_data=f'delete_choosen_file:{id}')

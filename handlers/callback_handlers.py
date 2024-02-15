@@ -485,11 +485,17 @@ async def process_getting_files(callback: types.CallbackQuery, state: FSMContext
 @router.callback_query(Admin_states.delete_file)
 async def process_delete_file(callback: types.CallbackQuery, state: FSMContext):
     from main import bot
+    from non_script_files.config import OPEN_CHANNEL
     if 'delete_choosen_file' in callback.data:
         id = int(callback.data.split(':')[1])
+        data = await state.get_data()
+        files = data['file_name']
+        file_name = files[id]
         await db.delete_files(file_id=id)
         await callback.answer(text='Файл удален',
                               show_alert=True)
+        await bot.send_message(chat_id=OPEN_CHANNEL,
+                               text=f'Файл {file_name} удален из чат-бота')
         await callback.message.delete()
     elif callback.data == 'close_operation':
         await callback.message.edit_text(text='Меню',
@@ -498,16 +504,20 @@ async def process_delete_file(callback: types.CallbackQuery, state: FSMContext):
     else:
         files = await db.get_files_to_delete(button_type=callback.data)
         chat_id = callback.from_user.id
+        file_names = {}
         for row in files:
+
             if row["file_format"]["caption_text"] == "Null":
                 await bot.send_document(chat_id=chat_id, 
                                         document=row["file_id"], 
-                                        reply_markup=Admin_Keyboards.delete_file(id=row["id"]))
+                                        reply_markup=Admin_Keyboards.delete_file(id=row["id"], file_name=row["file_format"]["file_name"]))
             else:
                 await bot.send_document(chat_id=chat_id, 
                                         caption=row["file_format"]["caption_text"], 
                                         document=row["file_id"],
-                                        reply_markup=Admin_Keyboards.delete_file(id=row["id"]))
+                                        reply_markup=Admin_Keyboards.delete_file(id=row["id"], file_name=row["file_format"]["file_name"]))
+            file_names[row["id"]] = row["file_format"]["file_name"]
+        await state.update_data(file_name=file_names)
         await callback.message.answer(text='Чтобы вернуться в главное меню нажмите кнопку',
                                       reply_markup=Admin_Keyboards.close_operation())
 
@@ -617,8 +627,14 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         files = data["file_sending_process"]
         await document_loading(button_name=data['folder_type'], doc_info=files)
         from non_script_files.config import OPEN_CHANNEL
-        files_names = '\n- '.join(set(file['file_name'] for file in files.values()))
-        await bot.send_message(chat_id=OPEN_CHANNEL, text=f'В раздел файлов <b>{folder_type}</b> загружен/ы файл/ы:\n- {files_names}')
+        files_info = ""
+        for file_info in files.values():
+            file_name = file_info.get('file_name')
+            caption_text = file_info.get('caption_text')
+
+            if file_name and caption_text:
+                files_info += f"- {file_name}\n\t\t{caption_text}\n"
+        await bot.send_message(chat_id=OPEN_CHANNEL, text=f'В раздел файлов <b>{folder_type}</b> загружен/ы файл/ы:\n {files_info}')
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
         await state.update_data(inline_menu=menu)
 

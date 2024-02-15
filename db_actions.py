@@ -604,3 +604,25 @@ class Database():
                                                 WHERE rp.user_id = $1''', user_id)
         
         return result
+    
+    async def get_files_to_delete(self, button_type: str):
+        '''
+        Возвращает список файлов, доступных для определенного отдела    
+        '''
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+
+        result = await self.connection.fetch('''SELECT * FROM admin_file_uploading
+                                                    WHERE button_type = $1''', button_type)
+        
+        return result
+
+    async def delete_files(self, file_id: int):
+        '''
+        Удаляет файлы по их id
+        '''
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+
+        await self.connection.execute('''DELETE FROM admin_file_uploading
+                                            WHERE id = $1''', file_id)

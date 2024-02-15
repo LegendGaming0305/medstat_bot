@@ -481,6 +481,35 @@ async def process_getting_files(callback: types.CallbackQuery, state: FSMContext
     await state.clear()
     await callback.message.answer(text='Вернитесь в главное меню по кнопке внизу вашего экрана', 
                                   reply_markup=general_kb)
+    
+@router.callback_query(Admin_states.delete_file)
+async def process_delete_file(callback: types.CallbackQuery, state: FSMContext):
+    from main import bot
+    if 'delete_choosen_file' in callback.data:
+        id = int(callback.data.split(':')[1])
+        await db.delete_files(file_id=id)
+        await callback.answer(text='Файл удален',
+                              show_alert=True)
+        await callback.message.delete()
+    elif callback.data == 'close_operation':
+        await callback.message.edit_text(text='Меню',
+                                         reply_markup=Admin_Keyboards.main_menu())
+        await state.clear()
+    else:
+        files = await db.get_files_to_delete(button_type=callback.data)
+        chat_id = callback.from_user.id
+        for row in files:
+            if row["file_format"]["caption_text"] == "Null":
+                await bot.send_document(chat_id=chat_id, 
+                                        document=row["file_id"], 
+                                        reply_markup=Admin_Keyboards.delete_file(id=row["id"]))
+            else:
+                await bot.send_document(chat_id=chat_id, 
+                                        caption=row["file_format"]["caption_text"], 
+                                        document=row["file_id"],
+                                        reply_markup=Admin_Keyboards.delete_file(id=row["id"]))
+        await callback.message.answer(text='Чтобы вернуться в главное меню нажмите кнопку',
+                                      reply_markup=Admin_Keyboards.close_operation())
 
 @router.callback_query(Admin_states.post_publication)
 async def process_open_chat_publication(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -751,7 +780,7 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
                 await callback.message.answer(text=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(post_id=publication['id']))
             elif publication['publication_type']['publication_format'] == 'Document': 
                 await bot.send_document(chat_id=callback.from_user.id, caption=publication['publication_type']['caption_text'], document=publication['publication_content'], reply_markup=Admin_Keyboards.post_publication(pub_type='document', post_id=publication['id']))
-        await callback.message.edit_text(inline_message_id=str(data["main_menu"].message_id), text='Если публикации закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых', reply_markup=Admin_Keyboards.pub_refresh())
+        await callback.message.edit_text(text='Если публикации закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых', reply_markup=Admin_Keyboards.pub_refresh())
         await state.set_state(Admin_states.post_publication)
     elif callback.data == 'op_channel_join':
         await callback.answer(text="Вы перешли в открытый канал")
@@ -780,6 +809,10 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'send_to_user':
         cb_msg = await callback.message.edit_text(text="Введите id пользователя(ей), после чего отправьте текстовое сообщение для рассылки пользователю(ям). Если пользователей больше одного, то вводите id через ',' или помещайте каждый новый id на новой строке (ctrl + enter)")
         await state.set_state(Admin_states.user_sending)
+    elif callback.data == 'delete_file':
+        await callback.message.edit_text(text='Выберите раздел, из которого нужно удалить',
+                                         reply_markup=Admin_Keyboards.file_loading())
+        await state.set_state(Admin_states.delete_file)
 
 
 

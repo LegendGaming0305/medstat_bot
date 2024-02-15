@@ -14,7 +14,7 @@ BUTTONS_TO_NUMBER = {'private':0, 'form':1, 'open':2}
 # ----------------------------------------------U-S-E-R-T-P-A-N-E-L----------------------------------------------
 class User_Keyboards():
     
-    async def main_menu(filled_form = False, user_id: int = None) -> InlineKeyboardBuilder:
+    async def main_menu(filled_form = False, user_id: int = None) -> InlineKeyboardMarkup:
 
         '''
             Функция, возвращающая все клавиатуры, связанные с главным меню и возвратом к нему.
@@ -187,12 +187,13 @@ class Admin_Keyboards():
         check_registrations = InlineKeyboardButton(text='Проверить регистрацию', callback_data='check_reg')
         registration_db = InlineKeyboardButton(text='Данные о зарегистрированных', callback_data='registration_db')
         publications = InlineKeyboardButton(text='Проверить публикации', callback_data='publications')
-        open_chan = InlineKeyboardButton(text="Открытый канал", callback_data='op_channel_join', url="https://t.me/+11PBfYkF3Fs0OTIy")
-        coord_chat = InlineKeyboardButton(text='Чат координаторов', callback_data='coord_chat_join', url="https://t.me/+zbz0lQoK6Fo2NjBi")
-        sections = InlineKeyboardButton(text="Разделы форм", callback_data='sections_join', url="https://t.me/+cNQvBD_FWpQxZWRi")
-        file_button = InlineKeyboardButton(text="Загрузить файлы", callback_data='load_file')
+        open_chan = InlineKeyboardButton(text='Открытый канал', callback_data='op_channel_join', url='https://t.me/+11PBfYkF3Fs0OTIy')
+        coord_chat = InlineKeyboardButton(text='Чат координаторов', callback_data='coord_chat_join', url='https://t.me/+zbz0lQoK6Fo2NjBi')
+        sections = InlineKeyboardButton(text='Разделы форм', callback_data='sections_join', url='https://t.me/+cNQvBD_FWpQxZWRi')
+        file_button = InlineKeyboardButton(text='Загрузить файлы', callback_data='load_file')
+        delete_file_button = InlineKeyboardButton(text='Удалить файл/ы', callback_data='delete_file')
         delete_member = InlineKeyboardButton(text='Удалить пользователя из чата', callback_data='delete_member')
-        send_private_message = InlineKeyboardButton(text="Отправить пользователю сообщение", callback_data="send_to_user")
+        send_private_message = InlineKeyboardButton(text='Отправить пользователю сообщение', callback_data='send_to_user')
 
         admin_starting_keyboard.add(check_registrations,
                                     registration_db,
@@ -201,6 +202,7 @@ class Admin_Keyboards():
                                     coord_chat,
                                     sections,
                                     file_button,
+                                    delete_file_button,
                                     delete_member,
                                     send_private_message)
         admin_starting_keyboard.adjust(1, repeat=True)
@@ -223,7 +225,7 @@ class Admin_Keyboards():
 
         return admin_registrator_keyboard
     
-    def application_gen(unreg_tuple, page_value: int):
+    def application_gen(unreg_tuple, page_value: int) -> InlineKeyboardBuilder:
 
         '''
             Отдельная функция, генерирующая кнопки, в з-ти от заявок пользователей
@@ -267,7 +269,7 @@ class Admin_Keyboards():
     
             return generated_keyboard
 
-    def post_publication(post_id: int, pub_type: str = 'text') -> InlineKeyboardBuilder:
+    def post_publication(post_id: int, pub_type: str = 'text') -> InlineKeyboardMarkup:
         '''
         Клавиатура для выбора публикации в открытом канале
         '''
@@ -281,13 +283,13 @@ class Admin_Keyboards():
 
         return publication_keyboard.as_markup()
 
-    def pub_refresh():
+    def pub_refresh() -> InlineKeyboardMarkup:
         pub_ref_kb = InlineKeyboardBuilder()
         pub_ref_kb.add(InlineKeyboardButton(text='Проверить публикации', callback_data='publications'))
         pub_ref_kb.adjust(1)
         return pub_ref_kb.as_markup()
 
-    def file_loading(cancel = False, history_check = False) -> InlineKeyboardBuilder():
+    def file_loading(cancel = False, history_check = False) -> InlineKeyboardMarkup:
         file_kb = InlineKeyboardBuilder()
         if cancel == False:
             npa_button = InlineKeyboardButton(text='НПА', callback_data='npa')
@@ -314,6 +316,22 @@ class Admin_Keyboards():
         delete_keyboard.add(coord, forms)
         delete_keyboard.adjust(1)
         return delete_keyboard.as_markup()
+    
+    def delete_file(id: int) -> InlineKeyboardMarkup:
+        delete_file_keyboard = InlineKeyboardBuilder()
+
+        delete_button = InlineKeyboardButton(text='Удалить файл', callback_data=f'delete_choosen_file:{id}')
+
+        delete_file_keyboard.add(delete_button)
+        return delete_file_keyboard.as_markup()
+    
+    def close_operation() -> InlineKeyboardMarkup:
+        close_operation_keyboard = InlineKeyboardBuilder()
+
+        close_button = InlineKeyboardButton(text='Завершить операцию', callback_data='close_operation')
+
+        close_operation_keyboard.add(close_button)
+        return close_operation_keyboard.as_markup()
 
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 

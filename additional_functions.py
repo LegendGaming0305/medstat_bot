@@ -451,4 +451,37 @@ class MessageInteraction:
     def create_message(self, user_id: int, subject: str, form_name: str, question: str, message_id: int):
         return f'<b>Пользователь:</b> {user_id}\n<b>Субъект:</b> {subject}\n<b>Форма:</b> {form_name}\n<b>Вопрос:</b> {question}\n<s>{message_id}</s>'
 
+class SearchFilter:
+    def __init__(self, specialist_id: int) -> None:
+        self.specialist_id = specialist_id
+        self.region = None
+        self.question_state = None
+        self.filter_args = [specialist_id]
+        self.index = 1
 
+    async def get_sql_results(self, connection) -> list:
+        '''
+        Получение данных из бд с приминением фильтров и возврат списка вопросов
+        '''
+        query = '''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, 
+                    rp.subject_name, ap.answer_content
+                    FROM questions_forms q
+                    JOIN form_types ft ON q.section_form = ft.id
+                    JOIN specialist_forms sf ON ft.id = sf.form_id
+                    JOIN high_priority_users hp ON sf.specialist_id = hp.id
+                    JOIN low_priority_users lp ON q.lp_user_id = lp.id
+                    JOIN registration_process rp ON lp.registration_process_id = rp.id
+                    JOIN answer_process ap ON q.id = ap.question_id
+                    WHERE hp.user_id = $1'''
+        
+        if self.region:
+            self.index += 1
+            query += f' AND rp.subject_name = ${self.index}'
+            self.filter_args.append(self.region)
+        if self.question_state:
+            self.index += 1
+            query += f' AND q.question_state = ${self.index}'
+            self.filter_args.append(self.question_state)
+
+        result = await connection.fetch(query, *self.filter_args)
+        return result

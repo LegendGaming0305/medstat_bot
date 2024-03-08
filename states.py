@@ -24,4 +24,5 @@ class Specialist_states(StatesGroup):
     answer_question = State()
     public_choose_message = State()
     complex_public = State()
+    choosing_filter = State()
 

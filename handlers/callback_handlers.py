@@ -11,7 +11,7 @@ from keyboards import Admin_Keyboards, User_Keyboards, Specialist_keyboards
 from db_actions import Database
 from states import Admin_states, Specialist_states, User_states
 from additional_functions import access_block_decorator, create_questions, fuzzy_handler, creating_excel_users, extracting_query_info, message_delition, question_redirect
-from additional_functions import document_loading, object_type_generator, save_to_txt, MessageInteraction
+from additional_functions import document_loading, object_type_generator, save_to_txt, MessageInteraction, SearchFilter
 from cache_container import cache
 from non_script_files.config import QUESTION_PATTERN
 
@@ -638,6 +638,18 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
         menu = await callback.message.edit_text(inline_message_id=str(data['inline_menu'].message_id), text="Процесс загрузки в форму успешно завершен. Выберете в какой раздел загружать файлы", reply_markup=Admin_Keyboards.file_loading())
         await state.update_data(inline_menu=menu)
 
+@router.callback_query(Specialist_states.choosing_filter)
+async def process_choosing_filters(callback: types.CallbackQuery, state: FSMContext):
+    if callback.data.startswith('district'):
+        district_id = callback.data.split('_')[-1]
+        regions_keyboard = await User_Keyboards.create_regions_buttons(district_id=int(district_id))
+        await callback.message.edit_text('Выберите регион/область', reply_markup=regions_keyboard)
+    elif callback.data.startswith('region'):
+        region_id = callback.data.split('_')[-1]
+        miac_name = await db.get_miac_information(info_type='miac', miac_id=int(region_id))
+
+        
+
 @router.callback_query(Admin_states.answers_form)
 async def process_choosing_answers_form(callback: types.CallbackQuery, state: FSMContext):
     '''
@@ -736,6 +748,8 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await callback.message.edit_text(text='Прикрепите файл и текстовое описание к нему или же вы можете написать текстовое сообщение-объявление для отправки в раздел форм')
         await state.set_state(Specialist_states.complex_public)
     elif 'answer_the_question' in callback.data:
+        await state.set_state(Specialist_states.choosing_filter)
+        custom_filter = SearchFilter(specialist_id=callback.from_user.id)
         operation_type = callback.data.split(":")[1]
         from additional_functions import choose_form
         flag = False

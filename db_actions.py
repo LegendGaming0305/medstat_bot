@@ -626,3 +626,10 @@ class Database():
 
         await self.connection.execute('''DELETE FROM admin_file_uploading
                                             WHERE id = $1''', file_id)
+        
+    async def execute_query(self, query: str, arguments: list):
+        if self.connection is None or self.connection.is_closed():
+            await self.create_connection()
+        query = query.replace('\n', '')
+        result = await self.connection.fetch(query, *arguments)
+        return result

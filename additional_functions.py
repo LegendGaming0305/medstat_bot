@@ -172,14 +172,11 @@ def json_reader(path: str):
     with open(path, 'r', encoding="utf-8") as j_file:
         return json.load(j_file)
     
-async def create_questions(specialist_id: int, form: str = None, question_status: str = "Pending") -> tuple[dict]:
+async def create_questions(questions_filter) -> tuple[dict]:
     '''
     Создание списка вопросов и помещения их в tuple
     '''
-    if form:
-        rows = await db.get_form_questions(form_name=form, question_status=question_status)
-    else:
-        rows = await db.get_specialits_questions(specialist_id=specialist_id, question_status=question_status)
+    rows = await questions_filter.fetch_questions()
     questions = []
     for row in rows:
         user_id = await db.get_lp_user_info(lp_user_id=row['lp_user_id']) ; user_id = user_id[1] ; user_id = user_id['user_id']
@@ -452,36 +449,67 @@ class MessageInteraction:
         return f'<b>Пользователь:</b> {user_id}\n<b>Субъект:</b> {subject}\n<b>Форма:</b> {form_name}\n<b>Вопрос:</b> {question}\n<s>{message_id}</s>'
 
 class SearchFilter:
+    '''
+    Класс для фильтрации вывода вопросов
+    '''
     def __init__(self, specialist_id: int) -> None:
         self.specialist_id = specialist_id
         self.region = None
-        self.question_state = None
+        self.form = None
+        self.question_states = []
         self.filter_args = [specialist_id]
-        self.index = 1
+        self.query = None
 
-    async def get_sql_results(self, connection) -> list:
+    async def fetch_questions(self) -> list:
         '''
-        Получение данных из бд с приминением фильтров и возврат списка вопросов
+        Получение данных из бд с применением фильтров и возврат списка вопросов
         '''
-        query = '''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, 
-                    rp.subject_name, ap.answer_content
+        self.construct_query()
+        result = await db.execute_query(query=self.query, arguments=self.filter_args)
+        return result
+
+    def construct_query(self) -> None:
+        select_insertion, join_selection = self.get_select_and_join_parts()
+
+        self.query = f'''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, 
+                    rp.subject_name{select_insertion}
                     FROM questions_forms q
                     JOIN form_types ft ON q.section_form = ft.id
                     JOIN specialist_forms sf ON ft.id = sf.form_id
                     JOIN high_priority_users hp ON sf.specialist_id = hp.id
                     JOIN low_priority_users lp ON q.lp_user_id = lp.id
                     JOIN registration_process rp ON lp.registration_process_id = rp.id
-                    JOIN answer_process ap ON q.id = ap.question_id
+                    {join_selection}
                     WHERE hp.user_id = $1'''
-        
-        if self.region:
-            self.index += 1
-            query += f' AND rp.subject_name = ${self.index}'
-            self.filter_args.append(self.region)
-        if self.question_state:
-            self.index += 1
-            query += f' AND q.question_state = ${self.index}'
-            self.filter_args.append(self.question_state)
 
-        result = await connection.fetch(query, *self.filter_args)
-        return result
+        if self.region:
+            self.add_region_filter()
+
+        if self.question_states:
+            self.add_question_states_filter()
+        else:
+            self.question_states.append('Pending')
+            self.add_question_states_filter()
+            
+        if self.form:
+            self.add_form()
+
+    def get_select_and_join_parts(self) -> tuple:
+        if 'Accept' in self.question_states:
+            return (', ap.answer_content', 'JOIN answer_process ap ON q.id = ap.question_id')
+        else:
+            return ('', '')
+
+    def add_region_filter(self) -> None:
+        self.query += f' AND rp.subject_name = ${len(self.filter_args) + 1}'
+        self.filter_args.append(self.region)    
+
+    def add_question_states_filter(self) -> None:
+        self.query += f' AND q.question_state IN ('
+        self.query += ','.join([f'${len(self.filter_args) + i + 1}' for i in range(len(self.question_states))])
+        self.query += ')'
+        self.filter_args.extend(self.question_states)
+
+    def add_form(self) -> None:
+        self.query += f' AND ft.form_tag = ${len(self.filter_args) + 1}'
+        self.filter_args.append(self.form)

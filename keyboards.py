@@ -333,6 +333,61 @@ class Admin_Keyboards():
         close_operation_keyboard.add(close_button)
         return close_operation_keyboard.as_markup()
 
+    def filters_menu_admin() -> InlineKeyboardMarkup:
+        '''
+        Кнопки для меню с фильтрами
+        '''
+        filters_menu_keyboard = InlineKeyboardBuilder()
+
+        regions_filter_button = InlineKeyboardButton(text='Выбрать регион', callback_data='regions_filter')
+        question_type_button = InlineKeyboardButton(text='Выбрать тип вопроса', callback_data='question_type')
+        form_selection_button = InlineKeyboardButton(text='Выбрать форму', callback_data='form_selection')
+        show_questions_button = InlineKeyboardButton(text='Вывести вопросы', callback_data='show_questions')
+
+        filters_menu_keyboard.add(regions_filter_button,
+                                  question_type_button,
+                                  form_selection_button,
+                                  show_questions_button)
+        filters_menu_keyboard.adjust(1)
+        return filters_menu_keyboard.as_markup()
+    
+    def questions_type_menu(unanswered_choosen: str, answered_choosen: str) -> InlineKeyboardMarkup:
+        '''
+        Кнопки меню фильтра по выбору типа вопросов
+        '''
+        questions_type_menu = InlineKeyboardBuilder()
+
+        unanswered_button = InlineKeyboardButton(text=f'Неотвеченные вопросы: режим {unanswered_choosen}', callback_data='unanswered_questions')
+        answered_button = InlineKeyboardButton(text=f'Отвеченные вопросы: режим {answered_choosen}', callback_data='answered_questions')
+        select_filter_button = InlineKeyboardButton(text='Применить', callback_data='select_filter')
+
+        questions_type_menu.add(unanswered_button,
+                                answered_button,
+                                select_filter_button)
+        questions_type_menu.adjust(1)
+        return questions_type_menu.as_markup()
+    
+    def forms_selection() -> InlineKeyboardMarkup:
+        section_key = InlineKeyboardBuilder()
+
+        button_one = InlineKeyboardButton(text='• Ф. № 30 Латышова А.А.', callback_data='sec_one')
+        button_two = InlineKeyboardButton(text='• Ф. № 30 Тюрина Е.М.', callback_data='sec_two')
+        button_three = InlineKeyboardButton(text='• Ф. № 30 Шелепова Е.А.', callback_data='sec_three')
+        button_four = InlineKeyboardButton(text='• Ф. № 14-ДС; Ф. 30 (в части работы СМП) Шляфер С.И.', callback_data='sec_four')
+        button_five = InlineKeyboardButton(text='• Ф. № 47', callback_data='sec_five')
+        button_six = InlineKeyboardButton(text='• ф. № 8, 33, 2-ТБ, 7-ТБ, 8-ТБ, 10-ТБ (туберкулез)', callback_data='sec_six')
+        button_seven = InlineKeyboardButton(text='• Ф. № 12, 12-село', callback_data='sec_seven')
+        button_eight = InlineKeyboardButton(text='• Ф. № 14, 19, 41, 54, 16-ВН, 1-РБ, 1-Дети (здрав), 32, 232(вкладыш), 53, 70', callback_data='sec_eight')
+        button_nine = InlineKeyboardButton(text='• Специализированные формы (№ 7, 9, 34; Ф. № 10, 36; Ф. № 36 -ПЛ; Ф. № 11, 37; Ф. № 13; Ф. № 15; Ф. № 55, 56; Ф. № 57; Ф. № 61; Ф. № 64 ; Ф. № 30 (в части работы Лабораторной службы)', callback_data='sec_nine')
+        button_eleven = InlineKeyboardButton(text='• Нормативные документы', callback_data='sec_eleven')
+        button_medstat = InlineKeyboardButton(text='• Система МЕДСТАТ', callback_data='sec_medstat')
+        button_general = InlineKeyboardButton(text='• Общий раздел', callback_data='sec_general')
+
+        section_key.add(button_eleven, button_medstat, button_general, button_one, button_two, button_three, 
+                        button_four, button_five, button_six, button_seven, button_eight,
+                        button_nine)
+        section_key.adjust(1)
+        return section_key.as_markup()
 # ----------------------------------------------A-D-M-I-N-P-A-N-E-L----------------------------------------------
 
 # ----------------------------------------------G-E-N-E-R-A-L-----------------------------------------------
@@ -342,13 +397,13 @@ class Admin_Keyboards():
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------
 class Specialist_keyboards():
 
-    def main_menu() -> InlineKeyboardBuilder:
+    def main_menu() -> InlineKeyboardMarkup:
         main_menu_kb = InlineKeyboardBuilder()
 
-        unanswered_questions = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question:unanswered')
-        answered_questions = InlineKeyboardButton(text='Вывести отвеченные вопросы', callback_data='answer_the_question:answered')
+        unanswered_questions = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question')
         upload_file = InlineKeyboardButton(text='Отправить файл\\сообщение', callback_data='complex_upload')
-        main_menu_kb.add(unanswered_questions, answered_questions, upload_file)
+        main_menu_kb.add(unanswered_questions, 
+                         upload_file)
         main_menu_kb.adjust(1)
         return main_menu_kb.as_markup()
     
@@ -364,15 +419,10 @@ class Specialist_keyboards():
         '''
         specialist_starting_keyboard = InlineKeyboardBuilder()
 
-        unanswered_questions = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question:unanswered') if in_the_section == None else InlineKeyboardButton(text='Ответить на вопросы', callback_data=f'admin:{in_the_section}')
-        answered_questions = InlineKeyboardButton(text='Вывести отвеченные вопросы', callback_data='answer_the_question:answered') if in_the_section == None else InlineKeyboardButton(text='Вывести отвеченные вопросы', callback_data=f'admin:{in_the_section}')
+        unanswered_questions = InlineKeyboardButton(text='Ответить на вопросы', callback_data='answer_the_question') if in_the_section == None else InlineKeyboardButton(text='Ответить на вопросы', callback_data=f'admin:{in_the_section}')
         
-        if flag == False:
-            specialist_starting_keyboard.add(unanswered_questions)
-            specialist_starting_keyboard.add(InlineKeyboardButton(text="Вернуться к формам", callback_data="admin:back_unanswered")) if in_the_section != None else None
-        else:
-            specialist_starting_keyboard.add(answered_questions)
-            specialist_starting_keyboard.add(InlineKeyboardButton(text="Вернуться к формам", callback_data="admin:back_answered")) if in_the_section != None else None
+        specialist_starting_keyboard.add(unanswered_questions)
+        specialist_starting_keyboard.add(InlineKeyboardButton(text="Вернуться к формам", callback_data="admin:back_unanswered")) if in_the_section != None else None
 
         specialist_starting_keyboard.adjust(1)
         return specialist_starting_keyboard.as_markup()
@@ -482,5 +532,21 @@ class Specialist_keyboards():
         forward_keyboard.add(private, form, open_chat, end)
         forward_keyboard.adjust(1, repeat=True)
         return forward_keyboard.as_markup()
+    
+    def filters_menu_specialist() -> InlineKeyboardMarkup:
+        '''
+        Кнопки для меню с фильтрами
+        '''
+        filters_menu_keyboard = InlineKeyboardBuilder()
+
+        regions_filter_button = InlineKeyboardButton(text='Выбрать регион', callback_data='regions_filter')
+        question_type_button = InlineKeyboardButton(text='Выбрать тип вопроса', callback_data='question_type')
+        show_questions_button = InlineKeyboardButton(text='Вывести вопросы', callback_data='show_questions')
+
+        filters_menu_keyboard.add(regions_filter_button,
+                                  question_type_button,
+                                  show_questions_button)
+        filters_menu_keyboard.adjust(1)
+        return filters_menu_keyboard.as_markup()
 
 # -----------------------------------------S-P-E-C-I-A-L-I-S-T-P-A-N-E-L----------------------------------------------

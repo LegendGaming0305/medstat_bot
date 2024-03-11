@@ -20,7 +20,7 @@ db = Database()
 router = Router()
 message_int = MessageInteraction()
 
-@router.callback_query(F.data.contains('district') | F.data.contains('region'))
+@router.callback_query(User_states.reg_organisation)
 async def process_miac_selection(callback: types.CallbackQuery, state: FSMContext) -> None:
     '''
     Модуль с выбором МИАЦ
@@ -220,14 +220,16 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
         history_text += f"Номер страницы: {page_number + 1}"
         await callback.message.edit_text(text=history_text, reply_markup=Specialist_keyboards.question_buttons(condition=(Data_storage.question_id, information_tuple[2], 4 * page_number)))
     elif 'answer_the_question' in callback.data:
-        operation_type = callback.data.split(":")[1]
-        flag = False
-        await state.set_state(Specialist_states.choosing_question)
-        if operation_type == "unanswered":
-            questions = await create_questions(callback.from_user.id)
-        else:
-            questions = await create_questions(callback.from_user.id, question_status="Accept")
-            flag = True
+        # operation_type = callback.data.split(":")[1]
+        # flag = False
+        # await state.set_state(Specialist_states.choosing_question)
+        # if operation_type == "unanswered":
+        #     questions = await create_questions(callback.from_user.id)
+        # else:
+        #     questions = await create_questions(callback.from_user.id, question_status="Accept")
+        #     flag = True
+        custom_filter = SearchFilter(specialist_id=callback.from_user.id)
+        questions = await create_questions(questions_filter=custom_filter)
         await callback.message.edit_text('Выберите вопрос')
         message_ids = []
         for question in questions:
@@ -246,7 +248,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                                     reply_markup=Specialist_keyboards.question_buttons())
             message_ids.append(message.message_id)
         await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                    reply_markup=Specialist_keyboards.questions_gen(flag))
+                                    reply_markup=Specialist_keyboards.questions_gen())
         try:
             await state.update_data(message_ids=message_ids)
         except UnboundLocalError:
@@ -640,15 +642,97 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(Specialist_states.choosing_filter)
 async def process_choosing_filters(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    search_filter = data['custom_filter']
     if callback.data.startswith('district'):
         district_id = callback.data.split('_')[-1]
         regions_keyboard = await User_Keyboards.create_regions_buttons(district_id=int(district_id))
         await callback.message.edit_text('Выберите регион/область', reply_markup=regions_keyboard)
+    elif callback.data == 'regions_filter':
+        markup = await User_Keyboards.create_district_buttons()
+        await callback.message.edit_text('Выберите Федеральный округ', reply_markup=markup)
+    elif callback.data == 'question_type':
+        await callback.message.edit_text('Нажмите на кнопку с типом вопросов и фильтр переключится, после чего нажмите кнопку "Применить".',
+                                         reply_markup=Admin_Keyboards.questions_type_menu(unanswered_choosen='вкл.',
+                                                                                          answered_choosen='выкл.'))
+    elif callback.data.endswith('answered_questions'):
+        replacement = {'вкл.': 'выкл.',
+                       'выкл.': 'вкл.'}
+        data_from_callback = callback.data
+        for button in callback.message.reply_markup.inline_keyboard[:2]:
+            if button[0].callback_data == data_from_callback:
+                choosen_flag = replacement.get(button[0].text[-5:].strip())
+            else:
+                not_choosen_flag = button[0].text[-5:].strip()
+        if data_from_callback == 'unanswered_questions':
+            menu = Admin_Keyboards.questions_type_menu(unanswered_choosen=choosen_flag,
+                                                       answered_choosen=not_choosen_flag)
+        else:
+            menu = Admin_Keyboards.questions_type_menu(unanswered_choosen=not_choosen_flag,
+                                                       answered_choosen=choosen_flag)
+        await callback.message.edit_reply_markup(reply_markup=menu)
+    elif callback.data == 'select_filter':
+        transformation = {'вкл.': True,
+                          'выкл.': False}
+        unanswered_flag = transformation.get(callback.message.reply_markup.inline_keyboard[0][0].text[-5:].strip())
+        answered_flag = transformation.get(callback.message.reply_markup.inline_keyboard[1][0].text[-5:].strip())
+        if unanswered_flag:
+            search_filter.question_states.append('Pending')
+        if answered_flag:
+            search_filter.question_states.append('Accept')
+        if data['role']:
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
+                                            reply_markup=Admin_Keyboards.filters_menu_admin())
+        else:
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
+                                            reply_markup=Specialist_keyboards.filters_menu_specialist())
+    elif callback.data == 'show_questions':
+        questions = await create_questions(questions_filter=search_filter)
+        await state.set_state(Specialist_states.choosing_question)
+        await callback.message.edit_text('Выберите вопрос')
+        message_ids = []
+        for question in questions:
+            lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
+            user_name = lp_user_info[0][1]
+            try:
+                message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
+                                                reply_markup=Specialist_keyboards.question_buttons())
+            except KeyError:
+                text = message_int.create_message(user_id=user_name,
+                                              subject=question['subject_name'],
+                                              form_name=question['form_name'],
+                                              question=question['question'],
+                                              message_id=question['message_id'])
+                message = await callback.message.answer(text=text, 
+                                                    reply_markup=Specialist_keyboards.question_buttons())
+            message_ids.append(message.message_id)
+        await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
+                                    reply_markup=Specialist_keyboards.questions_gen())
+        try:
+            await state.update_data(message_ids=message_ids)
+        except UnboundLocalError:
+            pass
+    elif callback.data == 'form_selection':
+        await callback.message.edit_text('Выберите форму',
+                                         reply_markup=Admin_Keyboards.forms_selection())
     elif callback.data.startswith('region'):
         region_id = callback.data.split('_')[-1]
         miac_name = await db.get_miac_information(info_type='miac', miac_id=int(region_id))
-
-        
+        search_filter.region = miac_name
+        if data['role']:
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
+                                            reply_markup=Admin_Keyboards.filters_menu_admin())
+        else:
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
+                                            reply_markup=Specialist_keyboards.filters_menu_specialist())
+    else:
+        search_filter.form = callback.data
+        if data['role']:
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
+                                            reply_markup=Admin_Keyboards.filters_menu_admin())
+        else:
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
+                                            reply_markup=Specialist_keyboards.filters_menu_specialist())
 
 @router.callback_query(Admin_states.answers_form)
 async def process_choosing_answers_form(callback: types.CallbackQuery, state: FSMContext):
@@ -727,9 +811,9 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
         await state.update_data(button_type='method_recommendations')
         await callback.message.edit_text(text='Выберите период времени', reply_markup=User_Keyboards.show_files())
     elif callback.data == 'registration':
-        await state.set_state(User_states.reg_organisation)
         markup = await User_Keyboards.create_district_buttons()
         await callback.message.edit_text('Выберите Федеральный округ', reply_markup=markup)
+        await state.set_state(User_states.reg_organisation)
     elif callback.data == "make_question":
         await getting_started(callback, state)
     elif callback.data == 'admin_panel':
@@ -747,55 +831,20 @@ async def process_user(callback: types.CallbackQuery, state: FSMContext) -> None
     elif callback.data == 'complex_upload':
         await callback.message.edit_text(text='Прикрепите файл и текстовое описание к нему или же вы можете написать текстовое сообщение-объявление для отправки в раздел форм')
         await state.set_state(Specialist_states.complex_public)
-    elif 'answer_the_question' in callback.data:
-        await state.set_state(Specialist_states.choosing_filter)
+    elif callback.data == 'answer_the_question':
+        from non_script_files.config import PRIORITY_LIST
         custom_filter = SearchFilter(specialist_id=callback.from_user.id)
-        operation_type = callback.data.split(":")[1]
-        from additional_functions import choose_form
-        flag = False
-        # ------------------ ЧАСТЬ АДМИНА -------------------------
-        if operation_type == "unanswered":
-            forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin")
-            questions = await create_questions(callback.from_user.id)
-        elif operation_type == "answered":
-            forms = await choose_form(user_id=callback.from_user.id, callback=callback, user_type="Admin", question_status="Accept")
-            questions = await create_questions(callback.from_user.id, question_status="Accept")
-            flag = True
+        for info in PRIORITY_LIST['OWNER']:
+            if callback.from_user.id == info['user_id']:
+                await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.',
+                                                reply_markup=Admin_Keyboards.filters_menu_admin())
+                await state.update_data(role='OWNER')
+                break
         else:
-            forms = await choose_form(user_id=callback.from_user.id, callback=callback)
-        
-        if forms is True:
-            await state.set_state(Admin_states.answers_form)
-            await state.update_data(operation_type=operation_type)
-            return
-        # ------------------ ЧАСТЬ АДМИНА -------------------------
-        
-        # ------------------ ЧАСТЬ СПЕЦИАЛИСТА -------------------------
-        await state.set_state(Specialist_states.choosing_question)
-        await callback.message.edit_text('Выберите вопрос')
-        message_ids = []
-        for question in questions:
-            lp_user_info = await db.get_lp_user_info(lp_user_id=question['lp_user_id'])
-            user_name = lp_user_info[0][1]
-            try:
-                message = await callback.message.answer(f'<b>Пользователь:</b> {user_name}\n<b>Субъект:</b> {question["subject_name"]}\n<b>Форма:</b> {question["form_name"]}\n<b>Вопрос:</b> {question["question"]}\n<s>{question["message_id"]}</s>\n\n<b>Ответ:</b> {question["spec_answer"]}', 
-                                                reply_markup=Specialist_keyboards.question_buttons())
-            except KeyError:
-                text = message_int.create_message(user_id=user_name,
-                                              subject=question['subject_name'],
-                                              form_name=question['form_name'],
-                                              question=question['question'],
-                                              message_id=question['message_id'])
-                message = await callback.message.answer(text=text, 
-                                                    reply_markup=Specialist_keyboards.question_buttons())
-            message_ids.append(message.message_id)
-        await callback.message.answer('Если вопросы закончились (нет больше кнопок у них), то нажмите здесь кнопку для генерации новых',
-                                    reply_markup=Specialist_keyboards.questions_gen(flag))
-        try:
-            await state.update_data(message_ids=message_ids)
-        except UnboundLocalError:
-            pass
-        # ------------------ ЧАСТЬ СПЕЦИАЛИСТА -------------------------
+            await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.',
+                                                reply_markup=Specialist_keyboards.filters_menu_specialist())
+        await state.update_data(custom_filter=custom_filter)
+        await state.set_state(Specialist_states.choosing_filter)
     elif callback.data == 'check_reg':
         await callback.message.edit_text(text="""Выберете заявку из предложенных. Если нету кнопок, прикрепленных к данному сообщению, то заявки не сформировались - вернитесь к данному меню позже. Для возврата в главное меню воспользуйтесь кнопкой 'Возврат в главное меню'""", reply_markup=Admin_Keyboards.application_gen(page_value=1, unreg_tuple=await db.get_unregistered()).as_markup())
         await state.set_state(Admin_states.registration_process)

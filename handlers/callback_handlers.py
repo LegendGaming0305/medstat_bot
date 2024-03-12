@@ -195,6 +195,8 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
     '''
     Выбор вопроса специалистом
     '''
+    data = await state.get_data()
+    search_filter = data['custom_filter']
     if 'dialogue_history' in callback.data:
         from cache_container import Data_storage
         message_int.parse_message(callback.message.html_text)
@@ -287,7 +289,7 @@ async def process_answers(callback: types.CallbackQuery, state: FSMContext) -> N
                                  specialist_id=callback.from_user.id)
         await callback.message.edit_text(f'<b>Вопрос закрыт</b>\n{callback.message.html_text}')
     elif 'back_to_question' in callback.data:
-        questions = await create_questions(callback.from_user.id)
+        questions = await create_questions(questions_filter=search_filter)
         question_id = callback.data ; question_id = question_id.split(":") ; question_id = int(question_id[1])
         question_info = await db.get_question_id(inputed_question_id=question_id)
 
@@ -642,6 +644,9 @@ async def upload_file(callback: types.CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(Specialist_states.choosing_filter)
 async def process_choosing_filters(callback: types.CallbackQuery, state: FSMContext):
+    '''
+    Выбор фильтра для вывода вопросов
+    '''
     data = await state.get_data()
     search_filter = data['custom_filter']
     if callback.data.startswith('district'):
@@ -680,10 +685,11 @@ async def process_choosing_filters(callback: types.CallbackQuery, state: FSMCont
             search_filter.question_states.append('Pending')
         if answered_flag:
             search_filter.question_states.append('Accept')
-        if data['role']:
+        try:
+            data['role']
             await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
                                             reply_markup=Admin_Keyboards.filters_menu_admin())
-        else:
+        except KeyError:
             await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
                                             reply_markup=Specialist_keyboards.filters_menu_specialist())
     elif callback.data == 'show_questions':
@@ -719,18 +725,20 @@ async def process_choosing_filters(callback: types.CallbackQuery, state: FSMCont
         region_id = callback.data.split('_')[-1]
         miac_name = await db.get_miac_information(info_type='miac', miac_id=int(region_id))
         search_filter.region = miac_name
-        if data['role']:
+        try:
+            data['role']
             await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
                                             reply_markup=Admin_Keyboards.filters_menu_admin())
-        else:
+        except KeyError:
             await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
                                             reply_markup=Specialist_keyboards.filters_menu_specialist())
     else:
         search_filter.form = callback.data
-        if data['role']:
+        try:
+            data['role']
             await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
                                             reply_markup=Admin_Keyboards.filters_menu_admin())
-        else:
+        except KeyError:
             await callback.message.edit_text('Выберите фильтры для вывода вопросов. И используйте кнопку "Вывести вопросы", если фильтры выбраны или не нужны.\nПо умолчанию будут выведены неотвеченные вопросы',
                                             reply_markup=Specialist_keyboards.filters_menu_specialist())
 

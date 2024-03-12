@@ -183,7 +183,14 @@ async def create_questions(questions_filter) -> tuple[dict]:
         subj_name = await db.get_subject_name(user_id=user_id)
         
         try:
-            data = {'question': row['question_content'],
+            if row['answer_content'] is None:
+                data = {'question': row['question_content'],
+                'lp_user_id': row['lp_user_id'],
+                'form_name': row['form_name'],
+                'message_id': row['question_message'],
+                'subject_name': row['subject_name']}
+            else:
+                data = {'question': row['question_content'],
                 'lp_user_id': row['lp_user_id'],
                 'form_name': row['form_name'],
                 'message_id': row['question_message'],
@@ -496,7 +503,7 @@ class SearchFilter:
 
     def get_select_and_join_parts(self) -> tuple:
         if 'Accept' in self.question_states:
-            return (', ap.answer_content', 'JOIN answer_process ap ON q.id = ap.question_id')
+            return (', ap.answer_content', 'LEFT JOIN (SELECT * FROM answer_process WHERE question_id IN (SELECT id FROM questions_forms WHERE question_state = \'Accept\')) ap ON q.id = ap.question_id')
         else:
             return ('', '')
 

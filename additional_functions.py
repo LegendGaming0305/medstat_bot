@@ -11,6 +11,8 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram import types
 from asyncio import sleep
 from fuzzywuzzy import fuzz
+from sqlalchemy import URL, create_engine, MetaData, select, and_
+from sqlalchemy.orm import Session
 
 from db_actions import Database
 
@@ -179,6 +181,7 @@ async def create_questions(questions_filter) -> tuple[dict]:
     rows = await questions_filter.fetch_questions()
     questions = []
     for row in rows:
+        row = row._mapping
         user_id = await db.get_lp_user_info(lp_user_id=row['lp_user_id']) ; user_id = user_id[1] ; user_id = user_id['user_id']
         subj_name = await db.get_subject_name(user_id=user_id)
         
@@ -464,59 +467,82 @@ class SearchFilter:
         self.region = None
         self.form = None
         self.question_states = []
-        self.filter_args = [specialist_id]
-        self.query = None
+        self.filter_args = dict()
+        self.metadata = None
 
     async def fetch_questions(self) -> list:
         '''
         Получение данных из бд с применением фильтров и возврат списка вопросов
         '''
-        self.construct_query()
-        result = await db.execute_query(query=self.query, arguments=self.filter_args)
+        self.database_connection()
+        self.define_tables()
+        result = self.construct_query()
         return result
 
+    def database_connection(self) -> None:
+        url_object = URL.create(
+            drivername='postgresql+psycopg2',
+            username='postgres',
+            password='!qwe@123#',
+            host='localhost',
+            database='telegram'
+        )
+
+        self.engine = create_engine(url=url_object)
+
+        metadata = MetaData()
+        metadata.reflect(bind=self.engine)
+        self.metadata = metadata
+
+    def define_tables(self) -> None:
+        self.high_priority_users = self.metadata.tables['high_priority_users']
+        self.questions_forms = self.metadata.tables['questions_forms']
+        self.form_types = self.metadata.tables['form_types']
+        self.specialist_forms = self.metadata.tables['specialist_forms']
+        self.low_priority_users = self.metadata.tables['low_priority_users']
+        self.registration_process = self.metadata.tables['registration_process']
+        self.answer_process = self.metadata.tables['answer_process']
+
     def construct_query(self) -> None:
-        select_insertion, join_selection = self.get_select_and_join_parts()
+        with Session(autoflush=False, bind=self.engine) as session:
 
-        self.query = f'''SELECT q.id, q.question_content, q.lp_user_id, ft.form_name, q.question_message, 
-                    rp.subject_name{select_insertion}
-                    FROM questions_forms q
-                    JOIN form_types ft ON q.section_form = ft.id
-                    JOIN specialist_forms sf ON ft.id = sf.form_id
-                    JOIN high_priority_users hp ON sf.specialist_id = hp.id
-                    JOIN low_priority_users lp ON q.lp_user_id = lp.id
-                    JOIN registration_process rp ON lp.registration_process_id = rp.id
-                    {join_selection}
-                    WHERE hp.user_id = $1'''
+            if self.region:
+                self.add_region_filter()
 
-        if self.region:
-            self.add_region_filter()
+            if self.question_states:
+                self.add_question_states_filter()
+            else:
+                self.question_states.append('Pending')
+                self.add_question_states_filter()
+                
+            if self.form:
+                self.add_form()
 
-        if self.question_states:
-            self.add_question_states_filter()
-        else:
-            self.question_states.append('Pending')
-            self.add_question_states_filter()
+            result = session.execute(
+                select(self.questions_forms.c.id,
+                    self.questions_forms.c.question_content,
+                    self.questions_forms.c.lp_user_id,
+                    self.form_types.c.form_name,
+                    self.questions_forms.c.question_message,
+                    self.registration_process.c.subject_name,
+                    self.answer_process.c.answer_content)
+                .join(self.form_types, self.questions_forms.c.section_form == self.form_types.c.id)
+                .join(self.specialist_forms, self.form_types.c.id == self.specialist_forms.c.form_id)
+                .join(self.high_priority_users, self.specialist_forms.c.specialist_id == self.high_priority_users.c.id)
+                .join(self.low_priority_users, self.questions_forms.c.lp_user_id == self.low_priority_users.c.id)
+                .join(self.registration_process, self.low_priority_users.c.registration_process_id == self.registration_process.c.id)
+                .join(self.answer_process, self.questions_forms.c.id == self.answer_process.c.question_id, full=True)
+                .where(
+                    and_(self.high_priority_users.c.user_id == self.specialist_id, *self.filter_args.values()))
+                ).all()
             
-        if self.form:
-            self.add_form()
-
-    def get_select_and_join_parts(self) -> tuple:
-        if 'Accept' in self.question_states:
-            return (', ap.answer_content', 'LEFT JOIN (SELECT * FROM answer_process WHERE question_id IN (SELECT id FROM questions_forms WHERE question_state = \'Accept\')) ap ON q.id = ap.question_id')
-        else:
-            return ('', '')
+            return result
 
     def add_region_filter(self) -> None:
-        self.query += f' AND rp.subject_name = ${len(self.filter_args) + 1}'
-        self.filter_args.append(self.region)    
+        self.filter_args['subject'] = self.registration_process.c.subject_name == self.region    
 
     def add_question_states_filter(self) -> None:
-        self.query += f' AND q.question_state IN ('
-        self.query += ','.join([f'${len(self.filter_args) + i + 1}' for i in range(len(self.question_states))])
-        self.query += ')'
-        self.filter_args.extend(self.question_states)
+        self.filter_args['states'] = self.questions_forms.c.question_state.in_(self.question_states)
 
     def add_form(self) -> None:
-        self.query += f' AND ft.form_tag = ${len(self.filter_args) + 1}'
-        self.filter_args.append(self.form)
+        self.filter_args['form'] = self.form_types.c.form_tag == self.form
